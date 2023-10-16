@@ -1,0 +1,44 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(location = 0) out vec4 color;
+layout(binding = 0) uniform sampler2D color_tex;
+layout(location = 0) in VS_OUT { vec2 tex_coord; } surf;
+
+const vec2 window_size = vec2(0.05);
+
+const float spatial_disp    = 0.5;
+const float colorspace_disp = 0.1;
+
+void main()
+{
+    vec4 base_color = textureLod(color_tex, surf.tex_coord, 0);
+    vec2 tex_size   = textureSize(color_tex, 0);
+    vec2 sz_step    = 1.0 / tex_size;
+
+    vec2 window_bottom = max(surf.tex_coord - (window_size*0.5), vec2(0.0));
+    vec2 window_top    = min(surf.tex_coord + (window_size*0.5), vec2(1.0));
+
+    float w = 0.0;
+    vec4 c  = vec4(vec3(0.0), 1.0);
+
+    for (float y = window_bottom.y; y <= window_top.y; y += sz_step.y)
+        for (float x = window_bottom.x; x <= window_top.x; x += sz_step.x) {
+            vec2 texel_coord = vec2(x, y);
+            vec4 texel_color = textureLod(color_tex, texel_coord, 0);
+
+            float spat_dist       = distance(surf.tex_coord, texel_coord);
+            float colorspace_dist = distance(base_color, texel_color);
+
+            float sd2 = spat_dist * spat_dist;
+            float cd2 = colorspace_dist * colorspace_dist;
+
+            float weight = exp(-sd2/spatial_disp) * exp(-cd2/colorspace_disp);
+
+            w += weight;
+            c += weight * texel_color;
+        }
+
+    color = c / w;
+    color.a = 1.0;
+}

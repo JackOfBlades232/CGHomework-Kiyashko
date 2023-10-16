@@ -1,0 +1,13 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "Локальный компьютер": [
+      "out\\build\\x64-Debug",
+      "out\\install\\x64-Debug"
+    ]
+  },
+  "ExpandedNodes": [
+    ""
+  ],
+  "SelectedNode": "\\C:\\Users\\MSI\\Desktop\\Study\\CGHomework-Kiyashko\\CMakeLists.txt\\quad_renderer.exe (C:\\Users\\MSI\\Desktop\\Study\\CGHomework-Kiyashko\\bin\\quad_renderer.exe)\\main.cpp",
+  "PreviewInSolutionExplorer": false
+}

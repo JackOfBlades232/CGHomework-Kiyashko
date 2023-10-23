@@ -11,89 +11,96 @@
 #include <iostream>
 #include <memory>
 
-class SimpleCompute : public ICompute
-{
+class SimpleCompute : public ICompute {
 public:
-  SimpleCompute(uint32_t a_length);
-  ~SimpleCompute()  { Cleanup(); };
+    SimpleCompute(uint32_t a_length);
+    ~SimpleCompute()  { Cleanup(); };
 
-  inline VkInstance   GetVkInstance() const override { return m_instance; }
-  void InitVulkan(const char** a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId) override;
+    inline VkInstance   GetVkInstance() const override { return m_instance; }
+    void InitVulkan(const char** a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId) override;
 
-  void Execute() override;
+    void Execute() override;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SetLength(uint32_t a_length) { m_length = a_length; }
+    void SetInOutPointers(std::vector<float> *in, std::vector<float> *out) { m_input  = in; m_output = out; }
+    void SetAdditionalPointers(float *compute_time_out) { m_compute_time_out = compute_time_out; }
 
-  // debugging utils
-  //
-  static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallbackFn(
-    VkDebugReportFlagsEXT                       flags,
-    VkDebugReportObjectTypeEXT                  objectType,
-    uint64_t                                    object,
-    size_t                                      location,
-    int32_t                                     messageCode,
-    const char* pLayerPrefix,
-    const char* pMessage,
-    void* pUserData)
-  {
-    (void)flags;
-    (void)objectType;
-    (void)object;
-    (void)location;
-    (void)messageCode;
-    (void)pUserData;
-    std::cout << pLayerPrefix << ": " << pMessage << std::endl;
-    return VK_FALSE;
-  }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  VkDebugReportCallbackEXT m_debugReportCallback = nullptr;
+    // debugging utils
+    //
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallbackFn(
+            VkDebugReportFlagsEXT                       flags,
+            VkDebugReportObjectTypeEXT                  objectType,
+            uint64_t                                    object,
+            size_t                                      location,
+            int32_t                                     messageCode,
+            const char* pLayerPrefix,
+            const char* pMessage,
+            void* pUserData)
+    {
+        (void)flags;
+        (void)objectType;
+        (void)object;
+        (void)location;
+        (void)messageCode;
+        (void)pUserData;
+        std::cout << pLayerPrefix << ": " << pMessage << std::endl;
+        return VK_FALSE;
+    }
+
+    VkDebugReportCallbackEXT m_debugReportCallback = nullptr;
 private:
 
-  VkInstance       m_instance       = VK_NULL_HANDLE;
-  VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
-  VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
-  VkDevice         m_device         = VK_NULL_HANDLE;
-  VkQueue          m_computeQueue   = VK_NULL_HANDLE;
-  VkQueue          m_transferQueue  = VK_NULL_HANDLE;
+    VkInstance       m_instance       = VK_NULL_HANDLE;
+    VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
+    VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
+    VkDevice         m_device         = VK_NULL_HANDLE;
+    VkQueue          m_computeQueue   = VK_NULL_HANDLE;
+    VkQueue          m_transferQueue  = VK_NULL_HANDLE;
 
-  vk_utils::QueueFID_T m_queueFamilyIDXs {UINT32_MAX, UINT32_MAX, UINT32_MAX};
+    vk_utils::QueueFID_T m_queueFamilyIDXs {UINT32_MAX, UINT32_MAX, UINT32_MAX};
 
-  VkCommandBuffer m_cmdBufferCompute;
-  VkFence m_fence;
+    VkCommandBuffer m_cmdBufferCompute;
+    VkFence m_fence;
 
-  std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
+    std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
 
-  uint32_t m_length  = 16u;
-  
-  VkPhysicalDeviceFeatures m_enabledDeviceFeatures = {};
-  std::vector<const char*> m_deviceExtensions      = {};
-  std::vector<const char*> m_instanceExtensions    = {};
+    uint32_t m_length  = 16u;
 
-  bool m_enableValidation;
-  std::vector<const char*> m_validationLayers;
-  std::shared_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
+    VkPhysicalDeviceFeatures m_enabledDeviceFeatures = {};
+    std::vector<const char*> m_deviceExtensions      = {};
+    std::vector<const char*> m_instanceExtensions    = {};
 
-  VkDescriptorSet       m_sumDS; 
-  VkDescriptorSetLayout m_sumDSLayout = nullptr;
-  
-  VkPipeline m_pipeline;
-  VkPipelineLayout m_layout;
+    bool m_enableValidation;
+    std::vector<const char*> m_validationLayers;
+    std::shared_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
 
-  VkBuffer m_A, m_B, m_sum;
- 
-  void CreateInstance();
-  void CreateDevice(uint32_t a_deviceId);
+    VkDescriptorSet       m_reductionDS; 
+    VkDescriptorSetLayout m_reductionDSLayout = nullptr;
 
-  void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeline a_pipeline);
+    VkPipeline m_pipeline;
+    VkPipelineLayout m_layout;
 
-  void SetupSimplePipeline();
-  void CreateComputePipeline();
-  void CleanupPipeline();
+    VkBuffer m_in, m_result;
 
-  void Cleanup();
+    std::vector<float> *m_input = nullptr;
+    std::vector<float> *m_output = nullptr;
 
-  void SetupValidationLayers();
+    float *m_compute_time_out = nullptr;
+
+    void CreateInstance();
+    void CreateDevice(uint32_t a_deviceId);
+
+    void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeline a_pipeline);
+
+    void SetupSimplePipeline();
+    void CreateComputePipeline();
+    void CleanupPipeline();
+
+    void Cleanup();
+
+    void SetupValidationLayers();
 };
-
 
 #endif //SIMPLE_COMPUTE_H

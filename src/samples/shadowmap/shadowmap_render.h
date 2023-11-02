@@ -63,10 +63,9 @@ private:
   std::vector<VkFence> m_frameFences;
   std::vector<VkCommandBuffer> m_cmdBuffersDrawMain;
 
-  struct
-  {
-    float4x4 projView;
-    float4x4 model;
+  struct { 
+      float4x4 projView; 
+      float4x4 model; 
   } pushConst2M;
 
   float4x4 m_worldViewProj;

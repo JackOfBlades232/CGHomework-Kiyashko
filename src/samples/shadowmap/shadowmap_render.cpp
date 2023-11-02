@@ -171,7 +171,7 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
       stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
 
     auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
-    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
+    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, i);
   }
 }
 

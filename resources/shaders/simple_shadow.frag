@@ -13,15 +13,11 @@ layout(location = 0) in VS_OUT {
     vec2 texCoord;
 } surf;
 
-layout(binding = 0, set = 0) uniform InstanceData {
-    mat4 instanceMatrices[27];
-};
-
-layout(binding = 1, set = 0) uniform AppData {
+layout(binding = 0, set = 0) uniform AppData {
     UniformParams Params;
 };
 
-layout(binding = 2) uniform sampler2D shadowMap;
+layout(binding = 1, set = 0) uniform sampler2D shadowMap;
 
 void main()
 {

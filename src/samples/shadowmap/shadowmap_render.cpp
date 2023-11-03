@@ -50,12 +50,12 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 
     // @TODO: pull out
     std::vector<LiteMath::float4x4> *matrices_data = m_pScnMgr->GetInstanceMatrices();
-    size_t matrices_size = matrices_data->size() * sizeof(matrices_data[0]);
+    size_t matrices_size = matrices_data->size() * sizeof(LiteMath::float4x4);
     instanceMatrices = m_context->createBuffer(etna::Buffer::CreateInfo
             {
             .size = matrices_size,
-            .bufferUsage = vk::BufferUsageFlagBits::eUniformBuffer,
-            .memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY,
+            .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer,
+            .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
             .name = "instanceMatrices"
             });
     void *mapped_mem = instanceMatrices.map();
@@ -178,8 +178,7 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
     vkCmdBindIndexBuffer(a_cmdBuff, indexBuf, 0, VK_INDEX_TYPE_UINT32);
 
     pushConst2M.projView = a_wvp;
-    for (uint32_t i = 0; i < m_pScnMgr->InstancesNum(); ++i)
-    {
+    for (uint32_t i = 0; i < m_pScnMgr->InstancesNum(); ++i) {
         auto inst = m_pScnMgr->GetInstanceInfo(i);
 
         pushConst2M.modelIdx = i;
@@ -207,16 +206,17 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         etna::RenderTargetState renderTargets(a_cmdBuff, {2048, 2048}, {}, shadowMap);
 
         auto simpleShadowInfo = etna::get_shader_program("simple_shadow");
-        auto set = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(0), a_cmdBuff,
-                {
-                etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, constants.genBinding()}
-                });
-        VkDescriptorSet vkSet = set.getVkSet();
+
+        auto set0 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(0), a_cmdBuff,
+                { etna::Binding{0, constants.genBinding()} });
+        auto set1 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(1), a_cmdBuff,
+                { etna::Binding{0, instanceMatrices.genBinding()} });
+
+        VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
 
         vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.getVkPipeline());
         vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                m_shadowPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+                m_shadowPipeline.getVkPipelineLayout(), 0, 2, vkSets, 0, VK_NULL_HANDLE);
 
         DrawSceneCmd(a_cmdBuff, m_lightMatrix);
     }
@@ -226,20 +226,21 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     {
         auto simpleMaterialInfo = etna::get_shader_program("simple_material");
 
-        auto set = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(0), a_cmdBuff,
+        auto set0 = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(0), a_cmdBuff,
                 {
-                etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, constants.genBinding()},
-                etna::Binding {2, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
+                etna::Binding {0, constants.genBinding()},
+                etna::Binding {1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
                 });
+        auto set1 = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(1), a_cmdBuff,
+                { etna::Binding{0, instanceMatrices.genBinding()} });
 
-        VkDescriptorSet vkSet = set.getVkSet();
+        VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
 
         etna::RenderTargetState renderTargets(a_cmdBuff, {m_width, m_height}, {{a_targetImage, a_targetImageView}}, mainViewDepth);
 
         vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_basicForwardPipeline.getVkPipeline());
         vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                m_basicForwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+                m_basicForwardPipeline.getVkPipelineLayout(), 0, 2, vkSets, 0, VK_NULL_HANDLE);
 
         DrawSceneCmd(a_cmdBuff, m_worldViewProj);
     }

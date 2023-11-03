@@ -55,7 +55,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
             {
             .size = matrices_size,
             .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer,
-            .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+            .memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY,
             .name = "instanceMatrices"
             });
     void *mapped_mem = instanceMatrices.map();
@@ -178,16 +178,13 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
     vkCmdBindIndexBuffer(a_cmdBuff, indexBuf, 0, VK_INDEX_TYPE_UINT32);
 
     pushConst2M.projView = a_wvp;
-    for (uint32_t i = 0; i < m_pScnMgr->InstancesNum(); ++i) {
-        auto inst = m_pScnMgr->GetInstanceInfo(i);
+	vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.getVkPipelineLayout(),
+			stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
 
-        pushConst2M.modelIdx = i;
-        vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.getVkPipelineLayout(),
-                stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
-
-        auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
-        vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, i);
-    }
+    // @NOTE: single-mesh scene hack. A better thing to do would be loop over meshes,
+    //        using offsets in instance array (with gl_BaseInstance)
+	auto mesh_info = m_pScnMgr->GetMeshInfo(0);
+    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, m_pScnMgr->InstancesNum(), mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
 }
 
 void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)

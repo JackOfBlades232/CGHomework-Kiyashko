@@ -65,7 +65,6 @@ private:
 
     struct { 
         float4x4 projView; 
-        uint modelIdx;
     } pushConst2M;
 
     float4x4 m_worldViewProj;

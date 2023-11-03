@@ -10,7 +10,6 @@ layout(location = 1) in vec4 vTexCoordAndTang;
 
 layout(push_constant) uniform params_t {
     mat4 mProjView;
-    uint mModelIndex;
 } params;
 
 layout(location = 0) out VS_OUT {
@@ -34,16 +33,10 @@ void main(void)
     const vec4 wNorm = vec4(DecodeNormal(floatBitsToInt(vPosNorm.w)),         0.0f);
     const vec4 wTang = vec4(DecodeNormal(floatBitsToInt(vTexCoordAndTang.z)), 0.0f);
 
-    vOut.wPos     = (instanceMatrices[params.mModelIndex] * vec4(vPosNorm.xyz, 1.0f)).xyz;
-    vOut.wNorm    = normalize(mat3(transpose(inverse(instanceMatrices[params.mModelIndex]))) * wNorm.xyz);
-    vOut.wTangent = normalize(mat3(transpose(inverse(instanceMatrices[params.mModelIndex]))) * wTang.xyz);
+    vOut.wPos     = (instanceMatrices[gl_InstanceIndex] * vec4(vPosNorm.xyz, 1.0f)).xyz;
+    vOut.wNorm    = normalize(mat3(transpose(inverse(instanceMatrices[gl_InstanceIndex]))) * wNorm.xyz);
+    vOut.wTangent = normalize(mat3(transpose(inverse(instanceMatrices[gl_InstanceIndex]))) * wTang.xyz);
     vOut.texCoord = vTexCoordAndTang.xy;
-    /*
-    vOut.wPos     = (instanceMatrices[26] * vec4(vPosNorm.xyz, 1.0f)).xyz;
-    vOut.wNorm    = normalize(mat3(transpose(inverse(instanceMatrices[26]))) * wNorm.xyz);
-    vOut.wTangent = normalize(mat3(transpose(inverse(instanceMatrices[26]))) * wTang.xyz);
-    vOut.texCoord = vTexCoordAndTang.xy;
-    */
 
     gl_Position   = params.mProjView * vec4(vOut.wPos, 1.0);
 }

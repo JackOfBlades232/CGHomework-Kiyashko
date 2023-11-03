@@ -43,25 +43,28 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
         auto meshId    = AddMeshFromFile(loc);
         auto instances = hscene_main->GetAllInstancesOfMeshLoc(loc); 
         for(size_t j = 0; j < instances.size(); ++j) {
-            instances[j] = instances[j] * LiteMath::scale4x4(LiteMath::float3(0.1f));
+            instances[j] = LiteMath::scale4x4(LiteMath::float3(0.1f)) * instances[j];
             if (transpose)
                 instances[j] = LiteMath::transpose(instances[j]);
             
             // @NOTE: this is probably not the best place to spawn an arbitrary
             //        number of instances))
-            constexpr float offset = -3.5f/*35.f*/;
+            constexpr float offset = -1.4f/*14.f*/;
             constexpr float min_coord = 0.f + offset;
-            constexpr float max_coord = 10.51f/*105.01f*/ + offset;
-            constexpr float step = 5.f;
+            constexpr float max_coord = 4.21f/*42.01f*/ + offset;
+            constexpr float step = 2.f;
 
             for (float x = min_coord; x < max_coord; x += step)
                 for (float y = min_coord; y < max_coord; y += step)
                     for (float z = min_coord; z < max_coord; z += step) {
-                        LiteMath::float4x4 instance = instances[j] * LiteMath::translate4x4(LiteMath::float3(x, y, z));
+                        LiteMath::float4x4 instance = LiteMath::translate4x4(LiteMath::float3(x, y, z)) * instances[j];
                         InstanceMesh(meshId, instance);
                     }
         }
     }
+
+    m_markedInstances.counter = 0;
+    m_markedInstances.indices = std::vector<LiteMath::uint>(m_instanceMatrices.size());
 
     // @TODO: need to also place camera correctly (transpose ting)
     for (auto cam : hscene_main->Cameras()) {

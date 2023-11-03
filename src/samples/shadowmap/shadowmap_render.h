@@ -49,6 +49,8 @@ private:
     etna::Sampler defaultSampler;
     etna::Buffer constants;
     etna::Buffer instanceMatrices;
+    etna::Buffer instanceBboxes;
+    etna::Buffer markedInstances;
 
     VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
 
@@ -72,9 +74,11 @@ private:
 
     UniformParams m_uniforms {};
     void* m_uboMappedMem = nullptr;
+    void* m_ssboMappedMem = nullptr;
 
     etna::GraphicsPipeline m_basicForwardPipeline {};
     etna::GraphicsPipeline m_shadowPipeline {};
+    etna::ComputePipeline m_cullingPipeline {};
 
     std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
 
@@ -141,7 +145,7 @@ private:
     void RecreateSwapChain();
 
     void UpdateUniformBuffer(float a_time);
-
+    void UpdateSharedBuffer();
 
     void SetupDeviceExtensions();
 

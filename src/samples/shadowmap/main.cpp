@@ -40,7 +40,7 @@ int main()
 
   initVulkanGLFW(app, window);
 
-  app->LoadScene(VK_GRAPHICS_BASIC_ROOT "/resources/scenes/Serapis/statex_00001.xml", true);
+  app->LoadScene(VK_GRAPHICS_BASIC_ROOT "/resources/scenes/Serapis/statex_00001.xml", false);
 
   mainLoop(app, window, true);
 

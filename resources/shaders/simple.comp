@@ -1,30 +1,68 @@
-#version 430
+#version 450
 
-layout( local_size_x = 32 ) in;
-
-layout( push_constant ) uniform params {
-  uint len;
-} PushConstant;
-
-layout(std430, binding = 0) buffer a 
-{
-    float A[];
+struct BboxData {
+    vec4 min;
+    vec4 max;
 };
 
-layout(std430, binding = 1) buffer b
-{
-    float B[];
+layout(local_size_x = 32) in;
+
+layout(push_constant) uniform params_t {
+    mat4 mProjView;
+} params;
+
+layout(std430, binding = 0) readonly buffer InstanceData {
+    mat4 instanceMatrices[];
 };
 
-layout(std430, binding = 2) buffer Sum
-{
-    float sum[];
+layout(std430, binding = 1) readonly buffer BoxData {
+    BboxData instanceBboxes[];
 };
+
+layout(std430, binding = 2) buffer InstanceIndices {
+    uint counter;
+    uint markedInstanceIndices[];
+};
+
+bool pointIsInFrustrum(vec4 p)
+{
+    return p.x >= -1.0 && p.x <= 1.0 &&
+           p.y >= -1.0 && p.y <= 1.0;// &&
+           //p.z >= 0.0 && p.z <= 1.0;
+}
 
 void main() 
 {
     uint idx = gl_GlobalInvocationID.x;
-    if (idx < PushConstant.len) {
-        sum[idx] = A[idx] + B[idx];
+    if (idx < instanceBboxes.length()) {
+        BboxData bbox = instanceBboxes[idx];
+
+        vec3 bMin = (params.mProjView * bbox.min).xyz;
+        vec3 bMax = (params.mProjView * bbox.max).xyz;
+
+        vec4 p1 = vec4(bMin, 1.0);
+        vec4 p2 = vec4(vec3(bMin.x, bMin.y, bMax.z), 1.0);
+        vec4 p3 = vec4(vec3(bMin.x, bMax.y, bMin.z), 1.0);
+        vec4 p4 = vec4(vec3(bMax.x, bMin.y, bMin.z), 1.0);
+        vec4 p5 = vec4(vec3(bMax.x, bMin.y, bMax.z), 1.0);
+        vec4 p6 = vec4(vec3(bMin.x, bMax.y, bMax.z), 1.0);
+        vec4 p7 = vec4(vec3(bMax.x, bMax.y, bMin.z), 1.0);
+        vec4 p8 = vec4(bMax, 1.0);
+
+        if (pointIsInFrustrum(p1) ||
+            pointIsInFrustrum(p2) ||
+            pointIsInFrustrum(p3) ||
+            pointIsInFrustrum(p4) ||
+            pointIsInFrustrum(p5) ||
+            pointIsInFrustrum(p6) ||
+            pointIsInFrustrum(p7) ||
+            pointIsInFrustrum(p8))
+        {
+            //markedInstanceIndices[atomicAdd(counter, 1)] = idx;
+
+            // @TEST
+            markedInstanceIndices[idx] = 1;
+        } else
+            markedInstanceIndices[idx] = 0;
     }
 }

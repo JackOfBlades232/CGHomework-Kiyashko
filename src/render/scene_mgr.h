@@ -18,11 +18,6 @@ struct InstanceInfo {
     bool renderMark = false;
 };
 
-struct MarkedInstanceArr {
-    LiteMath::uint counter;
-    std::vector<LiteMath::uint> indices;
-};
-
 struct SceneManager {
     SceneManager(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId,
             bool debug = false);
@@ -64,9 +59,10 @@ struct SceneManager {
 
     std::vector<LiteMath::float4x4> *GetInstanceMatrices() { return &m_instanceMatrices; }
     std::vector<LiteMath::Box4f> *GetInstanceBboxes() { return &m_instanceBboxes; }
-    MarkedInstanceArr *GetMarkedInstances() { return &m_markedInstances; }
+    std::vector<VkDrawIndexedIndirectCommand> *GetMarkedInstances() { return &m_markedInstances; }
+    LiteMath::uint *GetInstanceCounterMem() { return &m_instanceCounter; }
 
-    void ResetMarkedInstanceCounter() { m_markedInstances.counter = 0; }
+    void ResetMarkedInstanceCounter() { m_instanceCounter = 0; }
 
 private:
     void LoadGeoDataOnGPU();
@@ -78,7 +74,8 @@ private:
     std::vector<InstanceInfo> m_instanceInfos = {};
     std::vector<LiteMath::Box4f> m_instanceBboxes = {};
     std::vector<LiteMath::float4x4> m_instanceMatrices = {};
-    MarkedInstanceArr m_markedInstances = {};
+    std::vector<VkDrawIndexedIndirectCommand> m_markedInstances = {};
+    LiteMath::uint m_instanceCounter;
 
     std::vector<hydra_xml::Camera> m_sceneCameras = {};
     LiteMath::Box4f sceneBbox;

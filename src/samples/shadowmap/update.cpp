@@ -56,8 +56,8 @@ void SimpleShadowmapRender::UpdateSharedBuffer()
 {
     m_pScnMgr->ResetMarkedInstanceCounter();
 
-    MarkedInstanceArr *marked_instances = m_pScnMgr->GetMarkedInstances();
-    *((LiteMath::uint *)m_ssboMappedMem) = marked_instances->counter;
+    LiteMath::uint *instance_counter = m_pScnMgr->GetInstanceCounterMem();
+    *((LiteMath::uint *)m_ssboMappedMem) = *instance_counter;
 }
 
 void SimpleShadowmapRender::ProcessInput(const AppInput &input)

@@ -73,18 +73,28 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
     void *mapped_mem2 = instanceBboxes.map();
     memcpy(mapped_mem2, bboxes_data->data(), bboxes_size);
 
-    MarkedInstanceArr *marked_instances = m_pScnMgr->GetMarkedInstances();
-    size_t marked_size = marked_instances->indices.size() * sizeof(LiteMath::uint) + sizeof(LiteMath::uint);
+    std::vector<VkDrawIndexedIndirectCommand> *marked_instances = m_pScnMgr->GetMarkedInstances();
+    size_t marked_size = marked_instances->size() * sizeof(VkDrawIndexedIndirectCommand);
     markedInstances = m_context->createBuffer(etna::Buffer::CreateInfo
             {
             .size = marked_size,
-            .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
+            .bufferUsage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
             .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
             .name = "markedInstances"
             });
-    m_ssboMappedMem = markedInstances.map();
-    *((LiteMath::uint *)m_ssboMappedMem) = marked_instances->counter;
-    memcpy((LiteMath::uint *)m_ssboMappedMem + 1, marked_instances->indices.data(), marked_size - sizeof(LiteMath::uint));
+    void *mapped_mem3 = markedInstances.map();
+    memcpy(mapped_mem3, marked_instances->data(), marked_size);
+
+    LiteMath::uint *instance_counter = m_pScnMgr->GetInstanceCounterMem();
+    instanceCounter = m_context->createBuffer(etna::Buffer::CreateInfo
+            {
+            .size = sizeof(LiteMath::uint),
+            .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
+            .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+            .name = "instanceCounter"
+            });
+    m_ssboMappedMem = instanceCounter.map();
+    *((LiteMath::uint *)m_ssboMappedMem) = *instance_counter;
 
     // TODO: Make a separate stage
     loadShaders();
@@ -232,9 +242,9 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
         auto set = etna::create_descriptor_set(simpleComputeInfo.getDescriptorLayoutId(0), a_cmdBuff,
                 {
-                etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, instanceBboxes.genBinding()},
-                etna::Binding {2, markedInstances.genBinding()}
+                etna::Binding {0, instanceBboxes.genBinding()},
+                etna::Binding {1, markedInstances.genBinding()},
+                etna::Binding {2, instanceCounter.genBinding()}
                 });
 
         VkDescriptorSet vkSet = set.getVkSet();
@@ -263,7 +273,8 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         auto set1 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(1), a_cmdBuff,
                 {
                 etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, markedInstances.genBinding()}
+                etna::Binding {1, markedInstances.genBinding()},
+                etna::Binding {2, instanceCounter.genBinding()}
                 });
 
         VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
@@ -288,7 +299,8 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         auto set1 = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(1), a_cmdBuff,
                 {
                 etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, markedInstances.genBinding()}
+                etna::Binding {1, markedInstances.genBinding()},
+                etna::Binding {2, instanceCounter.genBinding()}
                 });
 
         VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };

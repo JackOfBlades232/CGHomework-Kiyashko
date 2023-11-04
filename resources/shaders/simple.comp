@@ -5,49 +5,57 @@ struct BboxData {
     vec4 max;
 };
 
+struct IndirectCmdData {
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int  vertexOffset;
+    uint firstInstance;
+};
+
 layout(local_size_x = 32) in;
 
 layout(push_constant) uniform params_t {
     mat4 mProjView;
 } params;
 
-layout(std430, binding = 0) readonly buffer InstanceData {
-    mat4 instanceMatrices[];
-};
-
-layout(std430, binding = 1) readonly buffer BoxData {
+layout(std430, binding = 0) readonly buffer BoxData {
     BboxData instanceBboxes[];
 };
 
-layout(std430, binding = 2) buffer InstanceIndices {
+layout(std430, binding = 1) buffer InstanceCmds {
+    IndirectCmdData markedInstanceIndices[];
+};
+
+layout(std430, binding = 2) buffer InstanceCounter {
     uint counter;
-    uint markedInstanceIndices[];
 };
 
 bool pointIsInFrustrum(vec4 p)
 {
     return p.x >= -1.0 && p.x <= 1.0 &&
-           p.y >= -1.0 && p.y <= 1.0;// &&
+           p.y >= -1.0 && p.y <= 1.0; //&&
            //p.z >= 0.0 && p.z <= 1.0;
 }
 
 void main() 
 {
+    // @TODO: fix frustrum culling dammit
     uint idx = gl_GlobalInvocationID.x;
     if (idx < instanceBboxes.length()) {
         BboxData bbox = instanceBboxes[idx];
 
-        vec3 bMin = (params.mProjView * bbox.min).xyz;
-        vec3 bMax = (params.mProjView * bbox.max).xyz;
+        vec3 bMin = bbox.min.xyz;
+        vec3 bMax = bbox.max.xyz;
 
-        vec4 p1 = vec4(bMin, 1.0);
-        vec4 p2 = vec4(vec3(bMin.x, bMin.y, bMax.z), 1.0);
-        vec4 p3 = vec4(vec3(bMin.x, bMax.y, bMin.z), 1.0);
-        vec4 p4 = vec4(vec3(bMax.x, bMin.y, bMin.z), 1.0);
-        vec4 p5 = vec4(vec3(bMax.x, bMin.y, bMax.z), 1.0);
-        vec4 p6 = vec4(vec3(bMin.x, bMax.y, bMax.z), 1.0);
-        vec4 p7 = vec4(vec3(bMax.x, bMax.y, bMin.z), 1.0);
-        vec4 p8 = vec4(bMax, 1.0);
+        vec4 p1 = params.mProjView * bbox.min;
+        vec4 p2 = params.mProjView * vec4(bbox.min.x, bbox.min.y, bbox.max.z, 1.0);
+        vec4 p3 = params.mProjView * vec4(bbox.min.x, bbox.max.y, bbox.min.z, 1.0);
+        vec4 p4 = params.mProjView * vec4(bbox.max.x, bbox.min.y, bbox.min.z, 1.0);
+        vec4 p5 = params.mProjView * vec4(bbox.max.x, bbox.min.y, bbox.max.z, 1.0);
+        vec4 p6 = params.mProjView * vec4(bbox.min.x, bbox.max.y, bbox.max.z, 1.0);
+        vec4 p7 = params.mProjView * vec4(bbox.max.x, bbox.max.y, bbox.min.z, 1.0);
+        vec4 p8 = params.mProjView * bbox.max;
 
         if (pointIsInFrustrum(p1) ||
             pointIsInFrustrum(p2) ||
@@ -58,11 +66,7 @@ void main()
             pointIsInFrustrum(p7) ||
             pointIsInFrustrum(p8))
         {
-            //markedInstanceIndices[atomicAdd(counter, 1)] = idx;
-
-            // @TEST
-            markedInstanceIndices[idx] = 1;
-        } else
-            markedInstanceIndices[idx] = 0;
+            markedInstanceIndices[atomicAdd(counter, 1)].firstInstance = idx;
+        }
     }
 }

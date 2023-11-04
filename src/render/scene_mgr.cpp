@@ -63,13 +63,12 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
         }
     }
 
-    m_markedInstances.counter = 0;
-    m_markedInstances.indices = std::vector<LiteMath::uint>(m_instanceMatrices.size());
+    m_instanceCounter = 0;
+    m_markedInstances.resize(m_instanceMatrices.size());
 
     // @TODO: need to also place camera correctly (transpose ting)
-    for (auto cam : hscene_main->Cameras()) {
+    for (auto cam : hscene_main->Cameras())
         m_sceneCameras.push_back(cam);
-    }
 
     LoadGeoDataOnGPU();
     hscene_main = nullptr;

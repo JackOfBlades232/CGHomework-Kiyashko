@@ -50,7 +50,7 @@ private:
     etna::Buffer constants;
     etna::Buffer instanceMatrices;
     etna::Buffer instanceBboxes;
-    etna::Buffer markedInstances;
+    etna::Buffer instanceCommands;
     etna::Buffer instanceCounter;
 
     VkCommandPool    m_commandPool    = VK_NULL_HANDLE;

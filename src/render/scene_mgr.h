@@ -59,7 +59,7 @@ struct SceneManager {
 
     std::vector<LiteMath::float4x4> *GetInstanceMatrices() { return &m_instanceMatrices; }
     std::vector<LiteMath::Box4f> *GetInstanceBboxes() { return &m_instanceBboxes; }
-    std::vector<VkDrawIndexedIndirectCommand> *GetMarkedInstances() { return &m_markedInstances; }
+    std::vector<VkDrawIndexedIndirectCommand> *GetMarkedInstances() { return &m_instanceCommands; }
     LiteMath::uint *GetInstanceCounterMem() { return &m_instanceCounter; }
 
     void ResetMarkedInstanceCounter() { m_instanceCounter = 0; }
@@ -74,7 +74,7 @@ private:
     std::vector<InstanceInfo> m_instanceInfos = {};
     std::vector<LiteMath::Box4f> m_instanceBboxes = {};
     std::vector<LiteMath::float4x4> m_instanceMatrices = {};
-    std::vector<VkDrawIndexedIndirectCommand> m_markedInstances = {};
+    std::vector<VkDrawIndexedIndirectCommand> m_instanceCommands = {};
     LiteMath::uint m_instanceCounter;
 
     std::vector<hydra_xml::Camera> m_sceneCameras = {};

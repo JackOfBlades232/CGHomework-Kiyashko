@@ -73,17 +73,17 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
     void *mapped_mem2 = instanceBboxes.map();
     memcpy(mapped_mem2, bboxes_data->data(), bboxes_size);
 
-    std::vector<VkDrawIndexedIndirectCommand> *marked_instances = m_pScnMgr->GetMarkedInstances();
-    size_t marked_size = marked_instances->size() * sizeof(VkDrawIndexedIndirectCommand);
-    markedInstances = m_context->createBuffer(etna::Buffer::CreateInfo
+    std::vector<VkDrawIndexedIndirectCommand> *instance_commands = m_pScnMgr->GetMarkedInstances();
+    size_t commands_size = instance_commands->size() * sizeof(VkDrawIndexedIndirectCommand);
+    instanceCommands = m_context->createBuffer(etna::Buffer::CreateInfo
             {
-            .size = marked_size,
+            .size = commands_size,
             .bufferUsage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
             .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-            .name = "markedInstances"
+            .name = "instanceCommands"
             });
-    void *mapped_mem3 = markedInstances.map();
-    memcpy(mapped_mem3, marked_instances->data(), marked_size);
+    void *mapped_mem3 = instanceCommands.map();
+    memcpy(mapped_mem3, instance_commands->data(), commands_size);
 
     LiteMath::uint *instance_counter = m_pScnMgr->GetInstanceCounterMem();
     instanceCounter = m_context->createBuffer(etna::Buffer::CreateInfo
@@ -219,10 +219,8 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
 	vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.getVkPipelineLayout(),
 			stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
 
-    // @NOTE: single-mesh scene hack. A better thing to do would be loop over meshes,
-    //        using offsets in instance array (with gl_BaseInstance)
-	auto mesh_info = m_pScnMgr->GetMeshInfo(0);
-    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, m_pScnMgr->InstancesNum(), mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
+    LiteMath::uint *counter_mem = (LiteMath::uint *)m_ssboMappedMem;
+    vkCmdDrawIndexedIndirect(a_cmdBuff, instanceCommands.get(), 0, *counter_mem, sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
@@ -243,7 +241,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         auto set = etna::create_descriptor_set(simpleComputeInfo.getDescriptorLayoutId(0), a_cmdBuff,
                 {
                 etna::Binding {0, instanceBboxes.genBinding()},
-                etna::Binding {1, markedInstances.genBinding()},
+                etna::Binding {1, instanceCommands.genBinding()},
                 etna::Binding {2, instanceCounter.genBinding()}
                 });
 
@@ -261,8 +259,11 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         vkCmdDispatch(a_cmdBuff, 1, 1, 1);
     }
 
+    // @TODO: this can not be synced with barrier in cmd buffer since we need correct counter
+    //        AT THE TIME OF creating the draw indirect buf. This means that we have to fill and
+    //        submit the queue twice: for compute and for draw
+
     //// draw scene to shadowmap
-    //
     {
         etna::RenderTargetState renderTargets(a_cmdBuff, {2048, 2048}, {}, shadowMap);
 
@@ -271,11 +272,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         auto set0 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(0), a_cmdBuff,
                 { etna::Binding{ 0, constants.genBinding() } });
         auto set1 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(1), a_cmdBuff,
-                {
-                etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, markedInstances.genBinding()},
-                etna::Binding {2, instanceCounter.genBinding()}
-                });
+                { etna::Binding {0, instanceMatrices.genBinding()} });
 
         VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
 
@@ -297,11 +294,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
                 etna::Binding {1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
                 });
         auto set1 = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(1), a_cmdBuff,
-                {
-                etna::Binding {0, instanceMatrices.genBinding()},
-                etna::Binding {1, markedInstances.genBinding()},
-                etna::Binding {2, instanceCounter.genBinding()}
-                });
+                { etna::Binding {0, instanceMatrices.genBinding()} });
 
         VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
 

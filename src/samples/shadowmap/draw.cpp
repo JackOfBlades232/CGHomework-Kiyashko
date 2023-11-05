@@ -79,16 +79,4 @@ void SimpleShadowmapRender::DrawFrame(float a_time, DrawMode a_mode)
         default:
             DrawFrameSimple(false);
     }
-
-    /*
-    MarkedInstanceArr *marked_instances = m_pScnMgr->GetMarkedInstances();
-    marked_instances->counter           = *((uint *)m_ssboMappedMem);
-    memcpy(marked_instances->indices.data(), (uint *)m_ssboMappedMem + 1,
-           marked_instances->indices.size() * sizeof(LiteMath::uint));
-
-    std::cout << '(' << marked_instances->counter << ')';
-    for (size_t i = 0; i < marked_instances->indices.size(); i++)
-        std::cout << ' ' << marked_instances->indices[i];
-    std::cout << '\n';
-    */
 }

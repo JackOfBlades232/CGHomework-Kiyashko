@@ -64,7 +64,6 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
     }
 
     m_instanceCounter = 0;
-    m_markedInstances.resize(m_instanceMatrices.size());
 
     // @TODO: need to also place camera correctly (transpose ting)
     for (auto cam : hscene_main->Cameras())
@@ -190,6 +189,14 @@ uint32_t SceneManager::InstanceMesh(const uint32_t meshId, const LiteMath::float
     info.instBufOffset = (m_instanceMatrices.size() - 1) * sizeof(matrix);
 
     m_instanceInfos.push_back(info);
+    m_instanceCommands.push_back(
+      VkDrawIndexedIndirectCommand{
+        m_meshInfos[meshId].m_indNum, 
+        1,
+        m_meshInfos[meshId].m_indexOffset, 
+        m_meshInfos[meshId].m_vertexOffset, 
+        0
+      });
 
     Box4f instBox;
     for (uint32_t i = 0; i < 8; ++i) {

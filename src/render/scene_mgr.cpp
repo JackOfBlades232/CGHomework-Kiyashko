@@ -49,10 +49,10 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
             
             // @NOTE: this is probably not the best place to spawn an arbitrary
             //        number of instances))
-            constexpr float offset = -1.4f/*14.f*/;
+            constexpr float offset = -15.75f;
             constexpr float min_coord = 0.f + offset;
-            constexpr float max_coord = 4.21f/*42.01f*/ + offset;
-            constexpr float step = 2.f;
+            constexpr float max_coord = 31.51f + offset;
+            constexpr float step = 1.5f;
 
             for (float x = min_coord; x < max_coord; x += step)
                 for (float y = min_coord; y < max_coord; y += step)

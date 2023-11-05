@@ -1,4 +1,9 @@
 #version 450
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+layout(local_size_x = COMPUTE_GROUP_SIZE_X) in;
 
 struct BboxData {
     vec4 min;
@@ -12,8 +17,6 @@ struct IndirectCmdData {
     int  vertexOffset;
     uint firstInstance;
 };
-
-layout(local_size_x = 32) in;
 
 layout(push_constant) uniform params_t {
     mat4 mProjView;

@@ -1,4 +1,5 @@
 #include "shadowmap_render.h"
+#include "../../../resources/shaders/common.h"
 
 #include <geom/vk_mesh.h>
 #include <vk_pipeline.h>
@@ -89,7 +90,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
     instanceCounter = m_context->createBuffer(etna::Buffer::CreateInfo
             {
             .size = sizeof(LiteMath::uint),
-            .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
+            .bufferUsage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
             .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
             .name = "instanceCounter"
             });
@@ -219,8 +220,12 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
 	vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.getVkPipelineLayout(),
 			stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
 
-    LiteMath::uint *counter_mem = (LiteMath::uint *)m_ssboMappedMem;
-    vkCmdDrawIndexedIndirect(a_cmdBuff, instanceCommands.get(), 0, *counter_mem, sizeof(VkDrawIndexedIndirectCommand));
+    vkCmdDrawIndexedIndirectCount(
+		a_cmdBuff,
+		instanceCommands.get(), 0,
+		instanceCounter.get(), 0,
+        m_pScnMgr->GetInstanceMatrices()->size(),
+		sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
@@ -232,6 +237,50 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
     VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
+
+    //// calculate frustrum culling for instances
+    //
+    {
+        auto simpleComputeInfo = etna::get_shader_program("simple_compute");
+
+        auto set = etna::create_descriptor_set(simpleComputeInfo.getDescriptorLayoutId(0), a_cmdBuff,
+                {
+                etna::Binding {0, instanceBboxes.genBinding()},
+                etna::Binding {1, instanceCommands.genBinding()},
+                etna::Binding {2, instanceCounter.genBinding()}
+                });
+
+        VkDescriptorSet vkSet = set.getVkSet();
+
+        vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_cullingPipeline.getVkPipeline());
+        vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
+                m_cullingPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+        pushConst2M.projView = m_worldViewProj;
+        vkCmdPushConstants(a_cmdBuff, m_cullingPipeline.getVkPipelineLayout(),
+                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConst2M), &pushConst2M);
+
+        uint32_t total_instances = m_pScnMgr->GetInstanceMatrices()->size();
+        uint32_t work_group_cnt  = (total_instances - 1) / COMPUTE_GROUP_SIZE_X + 1;
+        vkCmdDispatch(a_cmdBuff, work_group_cnt, 1, 1);
+    }
+
+    // Wait until buffers are ready (shouldn't there be a barrier between shadow and draw stages?)
+    VkMemoryBarrier memoryBarrier = {
+        .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+        .pNext         = nullptr,
+        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+		.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+    };
+    vkCmdPipelineBarrier(
+        a_cmdBuff,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+        0,
+        1, &memoryBarrier,
+        0, nullptr,
+        0, nullptr
+    );
 
     //// draw scene to shadowmap
     {
@@ -289,45 +338,6 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
             vk::ImageAspectFlagBits::eColor);
 
     etna::finish_frame(a_cmdBuff);
-
-    VK_CHECK_RESULT(vkEndCommandBuffer(a_cmdBuff));
-}
-
-void SimpleShadowmapRender::BuildCommandBufferCulling(VkCommandBuffer a_cmdBuff)
-{
-    vkResetCommandBuffer(a_cmdBuff, 0);
-
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
-    VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
-
-    //// calculate frustrum culling for instances
-    //
-    {
-        auto simpleComputeInfo = etna::get_shader_program("simple_compute");
-
-        auto set = etna::create_descriptor_set(simpleComputeInfo.getDescriptorLayoutId(0), a_cmdBuff,
-                {
-                etna::Binding {0, instanceBboxes.genBinding()},
-                etna::Binding {1, instanceCommands.genBinding()},
-                etna::Binding {2, instanceCounter.genBinding()}
-                });
-
-        VkDescriptorSet vkSet = set.getVkSet();
-
-        vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_cullingPipeline.getVkPipeline());
-        vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
-                m_cullingPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
-
-        pushConst2M.projView = m_worldViewProj;
-        vkCmdPushConstants(a_cmdBuff, m_cullingPipeline.getVkPipelineLayout(),
-                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConst2M), &pushConst2M);
-
-        // @TODO: calculate work groups for the needs of all instances
-        vkCmdDispatch(a_cmdBuff, 1, 1, 1);
-    }
 
     VK_CHECK_RESULT(vkEndCommandBuffer(a_cmdBuff));
 }

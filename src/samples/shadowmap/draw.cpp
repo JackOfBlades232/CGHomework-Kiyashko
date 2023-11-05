@@ -13,21 +13,6 @@ void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
     auto currentCmdBuf = m_cmdBuffersDrawMain[m_presentationResources.currentFrame];
 
     {
-		BuildCommandBufferCulling(currentCmdBuf);
-
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &currentCmdBuf;
-
-		VK_CHECK_RESULT(vkQueueSubmit(m_context->getQueue(),
-					1, &submitInfo, m_frameFences[m_presentationResources.currentFrame]));
-    }
-
-    vkWaitForFences(m_context->getDevice(), 1, &m_frameFences[m_presentationResources.currentFrame], VK_TRUE, UINT64_MAX);
-    vkResetFences(m_context->getDevice(), 1, &m_frameFences[m_presentationResources.currentFrame]);
-
-    {
 		uint32_t imageIdx;
 		m_swapchain.AcquireNextImage(m_presentationResources.imageAvailable, &imageIdx);
 

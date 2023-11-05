@@ -137,7 +137,6 @@ private:
     void CreateDevice(uint32_t a_deviceId);
 
     void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
-    void BuildCommandBufferCulling(VkCommandBuffer a_cmdBuff);
 
     void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 

@@ -45,11 +45,8 @@ void SimpleShadowmapRender::AllocateResources()
     m_uboMappedMem = constants.map();
 }
 
-void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
+void SimpleShadowmapRender::AllocateSceneResources()
 {
-    m_pScnMgr->LoadSceneXML(path, transpose_inst_matrices);
-
-    // @TODO: pull out
     std::vector<LiteMath::float4x4> *matrices_data = m_pScnMgr->GetInstanceMatrices();
     size_t matrices_size = matrices_data->size() * sizeof(LiteMath::float4x4);
     instanceMatrices = m_context->createBuffer(etna::Buffer::CreateInfo
@@ -96,6 +93,12 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
             });
     m_ssboMappedMem = instanceCounter.map();
     *((LiteMath::uint *)m_ssboMappedMem) = *instance_counter;
+}
+
+void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
+{
+    m_pScnMgr->LoadSceneXML(path, transpose_inst_matrices);
+    AllocateSceneResources();
 
     // TODO: Make a separate stage
     loadShaders();
@@ -228,6 +231,17 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
 		sizeof(VkDrawIndexedIndirectCommand));
 }
 
+void SimpleShadowmapRender::DispatchCullingCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
+{
+	pushConst2M.projView = a_wvp;
+	vkCmdPushConstants(a_cmdBuff, m_cullingPipeline.getVkPipelineLayout(),
+			VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConst2M), &pushConst2M);
+
+	uint32_t total_instances = m_pScnMgr->GetInstanceMatrices()->size();
+	uint32_t work_group_cnt  = (total_instances - 1) / COMPUTE_GROUP_SIZE_X + 1;
+	vkCmdDispatch(a_cmdBuff, work_group_cnt, 1, 1);
+}
+
 void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
     vkResetCommandBuffer(a_cmdBuff, 0);
@@ -256,13 +270,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
                 m_cullingPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
-        pushConst2M.projView = m_worldViewProj;
-        vkCmdPushConstants(a_cmdBuff, m_cullingPipeline.getVkPipelineLayout(),
-                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushConst2M), &pushConst2M);
-
-        uint32_t total_instances = m_pScnMgr->GetInstanceMatrices()->size();
-        uint32_t work_group_cnt  = (total_instances - 1) / COMPUTE_GROUP_SIZE_X + 1;
-        vkCmdDispatch(a_cmdBuff, work_group_cnt, 1, 1);
+        DispatchCullingCmd(a_cmdBuff, m_worldViewProj);
     }
 
     // Wait until buffers are ready (shouldn't there be a barrier between shadow and draw stages?)

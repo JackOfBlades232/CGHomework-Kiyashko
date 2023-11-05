@@ -1,5 +1,6 @@
 #include <map>
 #include <array>
+#include <cmath>
 #include "scene_mgr.h"
 #include "vk_utils.h"
 #include "vk_buffers.h"
@@ -39,21 +40,31 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
         return false;
     }
 
+    for (auto cam : hscene_main->Cameras())
+        m_sceneCameras.push_back(cam);
+
+	// @NOTE: this is probably not the best place to spawn an arbitrary
+	//        number of instances))
+	constexpr int   instance_cnt = 10000; // This gets rounded up to an exact cube
+	constexpr float step = 2.5f;
+
+	int dim = ceil(cbrt((double)instance_cnt));
+	float grid_size = step * (dim - 1);
+
+	float min_coord = -grid_size * 0.5f;
+	float max_coord = grid_size + min_coord + 0.01f;
+
+    // Centering all instances to the init camera pos
+    LiteMath::float3 *cam_pos = (LiteMath::float3 *)&m_sceneCameras[0].pos;
+
     for (auto loc : hscene_main->MeshFiles()) {
         auto meshId    = AddMeshFromFile(loc);
         auto instances = hscene_main->GetAllInstancesOfMeshLoc(loc); 
         for(size_t j = 0; j < instances.size(); ++j) {
-            instances[j] = LiteMath::scale4x4(LiteMath::float3(0.1f)) * instances[j];
+            instances[j] = LiteMath::translate4x4(*cam_pos) * LiteMath::scale4x4(LiteMath::float3(0.15f)) * instances[j];
             if (transpose)
                 instances[j] = LiteMath::transpose(instances[j]);
             
-            // @NOTE: this is probably not the best place to spawn an arbitrary
-            //        number of instances))
-            constexpr float offset = -15.75f;
-            constexpr float min_coord = 0.f + offset;
-            constexpr float max_coord = 31.51f + offset;
-            constexpr float step = 1.5f;
-
             for (float x = min_coord; x < max_coord; x += step)
                 for (float y = min_coord; y < max_coord; y += step)
                     for (float z = min_coord; z < max_coord; z += step) {
@@ -64,10 +75,6 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
     }
 
     m_instanceCounter = 0;
-
-    // @TODO: need to also place camera correctly (transpose ting)
-    for (auto cam : hscene_main->Cameras())
-        m_sceneCameras.push_back(cam);
 
     LoadGeoDataOnGPU();
     hscene_main = nullptr;
@@ -179,7 +186,6 @@ uint32_t SceneManager::InstanceMesh(const uint32_t meshId, const LiteMath::float
 {
     assert(meshId < m_meshInfos.size());
 
-    //@TODO: maybe move
     m_instanceMatrices.push_back(matrix);
 
     InstanceInfo info;

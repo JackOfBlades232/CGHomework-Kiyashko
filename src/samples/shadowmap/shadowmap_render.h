@@ -139,6 +139,7 @@ private:
     void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
     void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+    void DispatchCullingCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 
     void loadShaders();
 
@@ -151,6 +152,7 @@ private:
     void SetupDeviceExtensions();
 
     void AllocateResources();
+    void AllocateSceneResources();
     void PreparePipelines();
 
     void DestroyPipelines();

@@ -41,7 +41,7 @@ using shader_bool  = LiteMath::uint;
 
 #endif
 
-#define COMPUTE_GROUP_SIZE_X 512
+#define COMPUTE_GROUP_SIZE_X 64
 
 struct UniformParams
 {

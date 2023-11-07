@@ -27,13 +27,17 @@ layout(std430, binding = 0, set = 1) readonly buffer InstanceData {
     mat4 instanceMatrices[];
 };
 
+layout(std430, binding = 1, set = 1) buffer InstanceIndices {
+    uint markedInstanceIndices[];
+};
+
 out gl_PerVertex { vec4 gl_Position; };
 void main(void)
 {
     const vec4 wNorm = vec4(DecodeNormal(floatBitsToInt(vPosNorm.w)),         0.0f);
     const vec4 wTang = vec4(DecodeNormal(floatBitsToInt(vTexCoordAndTang.z)), 0.0f);
 
-    mat4 modelMatrix = instanceMatrices[gl_InstanceIndex];
+    mat4 modelMatrix = instanceMatrices[markedInstanceIndices[gl_InstanceIndex]];
 
     vOut.wPos     = (modelMatrix * vec4(vPosNorm.xyz, 1.0f)).xyz;
     vOut.wNorm    = normalize(mat3(transpose(inverse(modelMatrix))) * wNorm.xyz);

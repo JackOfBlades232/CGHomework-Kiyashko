@@ -26,12 +26,12 @@ layout(std430, binding = 0) readonly buffer BoxData {
     BboxData instanceBboxes[];
 };
 
-layout(std430, binding = 1) buffer InstanceCmds {
-    IndirectCmdData markedInstanceIndices[];
+layout(std430, binding = 1) buffer InstanceIndices {
+    uint markedInstanceIndices[];
 };
 
-layout(std430, binding = 2) buffer InstanceCounter {
-    uint counter;
+layout(std430, binding = 2) buffer IndirectCommand {
+    IndirectCmdData cmd;
 };
 
 bool pointIsInFrustrum(vec4 p)
@@ -74,7 +74,7 @@ void main()
             pointIsInFrustrum(p7) ||
             pointIsInFrustrum(p8))
         {
-            markedInstanceIndices[atomicAdd(counter, 1)].firstInstance = idx;
+            markedInstanceIndices[atomicAdd(cmd.instanceCount, 1)] = idx;
         }
     }
 }

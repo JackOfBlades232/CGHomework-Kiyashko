@@ -71,28 +71,29 @@ void SimpleShadowmapRender::AllocateSceneResources()
     void *mapped_mem2 = instanceBboxes.map();
     memcpy(mapped_mem2, bboxes_data->data(), bboxes_size);
 
-    std::vector<VkDrawIndexedIndirectCommand> *instance_commands = m_pScnMgr->GetMarkedInstances();
-    size_t commands_size = instance_commands->size() * sizeof(VkDrawIndexedIndirectCommand);
-    instanceCommands = m_context->createBuffer(etna::Buffer::CreateInfo
+    std::vector<LiteMath::uint> *instance_indices = m_pScnMgr->GetInstanceIndices();
+    size_t indices_size = instance_indices->size() * sizeof(LiteMath::uint);
+    instanceIndices = m_context->createBuffer(etna::Buffer::CreateInfo
             {
-            .size = commands_size,
+            .size = indices_size,
             .bufferUsage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
             .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-            .name = "instanceCommands"
+            .name = "instanceIndices"
             });
-    void *mapped_mem3 = instanceCommands.map();
-    memcpy(mapped_mem3, instance_commands->data(), commands_size);
+    void *mapped_mem3 = instanceIndices.map();
+    memcpy(mapped_mem3, instance_indices->data(), indices_size);
 
-    LiteMath::uint *instance_counter = m_pScnMgr->GetInstanceCounterMem();
-    instanceCounter = m_context->createBuffer(etna::Buffer::CreateInfo
+    // @HACK: again, single-mesh hack: just fill with mesh 0 data
+    m_pScnMgr->FillIndirectCommand(m_instIndirectCmd, 0);
+    indirectCommand = m_context->createBuffer(etna::Buffer::CreateInfo
             {
-            .size = sizeof(LiteMath::uint),
+            .size = sizeof(VkDrawIndexedIndirectCommand),
             .bufferUsage = vk::BufferUsageFlagBits::eIndirectBuffer | vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
             .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-            .name = "instanceCounter"
+            .name = "indirectCommand"
             });
-    m_ssboMappedMem = instanceCounter.map();
-    *((LiteMath::uint *)m_ssboMappedMem) = *instance_counter;
+    m_ssboMappedMem = indirectCommand.map();
+    memcpy(m_ssboMappedMem, &m_instIndirectCmd, sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
@@ -122,6 +123,7 @@ void SimpleShadowmapRender::DeallocateResources()
     constants        = etna::Buffer();
     instanceMatrices = etna::Buffer();
     instanceBboxes   = etna::Buffer();
+    indirectCommand  = etna::Buffer();
 }
 
 
@@ -223,12 +225,11 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
 	vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.getVkPipelineLayout(),
 			stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
 
-    vkCmdDrawIndexedIndirectCount(
+    // @HACK: once again, just drawing one indirect command = one mesh with instancing
+    vkCmdDrawIndexedIndirect(
 		a_cmdBuff,
-		instanceCommands.get(), 0,
-		instanceCounter.get(), 0,
-        m_pScnMgr->GetInstanceMatrices()->size(),
-		sizeof(VkDrawIndexedIndirectCommand));
+		indirectCommand.get(), 0,
+        1, sizeof(VkDrawIndexedIndirectCommand));
 }
 
 void SimpleShadowmapRender::DispatchCullingCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
@@ -260,8 +261,8 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         auto set = etna::create_descriptor_set(simpleComputeInfo.getDescriptorLayoutId(0), a_cmdBuff,
                 {
                 etna::Binding {0, instanceBboxes.genBinding()},
-                etna::Binding {1, instanceCommands.genBinding()},
-                etna::Binding {2, instanceCounter.genBinding()}
+                etna::Binding {1, instanceIndices.genBinding()},
+                etna::Binding {2, indirectCommand.genBinding()}
                 });
 
         VkDescriptorSet vkSet = set.getVkSet();
@@ -273,23 +274,6 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         DispatchCullingCmd(a_cmdBuff, m_worldViewProj);
     }
 
-    // Wait until buffers are ready (shouldn't there be a barrier between shadow and draw stages?)
-    VkMemoryBarrier memoryBarrier = {
-        .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-        .pNext         = nullptr,
-        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-		.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT
-    };
-    vkCmdPipelineBarrier(
-        a_cmdBuff,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-        0,
-        1, &memoryBarrier,
-        0, nullptr,
-        0, nullptr
-    );
-
     //// draw scene to shadowmap
     {
         etna::RenderTargetState renderTargets(a_cmdBuff, {2048, 2048}, {}, shadowMap);
@@ -299,7 +283,10 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
         auto set0 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(0), a_cmdBuff,
                 { etna::Binding{ 0, constants.genBinding() } });
         auto set1 = etna::create_descriptor_set(simpleShadowInfo.getDescriptorLayoutId(1), a_cmdBuff,
-                { etna::Binding {0, instanceMatrices.genBinding()} });
+                {
+                etna::Binding {0, instanceMatrices.genBinding()},
+                etna::Binding {1, instanceIndices.genBinding()},
+                });
 
         VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
 
@@ -321,7 +308,10 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
                 etna::Binding {1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
                 });
         auto set1 = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(1), a_cmdBuff,
-                { etna::Binding {0, instanceMatrices.genBinding()} });
+				{
+				etna::Binding {0, instanceMatrices.genBinding()},
+				etna::Binding {1, instanceIndices.genBinding()},
+				});
 
         VkDescriptorSet vkSets[] = { set0.getVkSet(), set1.getVkSet() };
 

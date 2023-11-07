@@ -59,10 +59,9 @@ struct SceneManager {
 
     std::vector<LiteMath::float4x4> *GetInstanceMatrices() { return &m_instanceMatrices; }
     std::vector<LiteMath::Box4f> *GetInstanceBboxes() { return &m_instanceBboxes; }
-    std::vector<VkDrawIndexedIndirectCommand> *GetMarkedInstances() { return &m_instanceCommands; }
-    LiteMath::uint *GetInstanceCounterMem() { return &m_instanceCounter; }
-
-    void ResetMarkedInstanceCounter() { m_instanceCounter = 0; }
+    std::vector<LiteMath::uint> *GetInstanceIndices() { return &m_instanceIndices; }
+    
+    void FillIndirectCommand(VkDrawIndexedIndirectCommand& cmd, uint32_t meshId);
 
 private:
     void LoadGeoDataOnGPU();
@@ -74,8 +73,7 @@ private:
     std::vector<InstanceInfo> m_instanceInfos = {};
     std::vector<LiteMath::Box4f> m_instanceBboxes = {};
     std::vector<LiteMath::float4x4> m_instanceMatrices = {};
-    std::vector<VkDrawIndexedIndirectCommand> m_instanceCommands = {};
-    LiteMath::uint m_instanceCounter;
+    std::vector<LiteMath::uint> m_instanceIndices = {};
 
     std::vector<hydra_xml::Camera> m_sceneCameras = {};
     LiteMath::Box4f sceneBbox;

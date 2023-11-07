@@ -54,10 +54,8 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
 
 void SimpleShadowmapRender::UpdateSharedBuffer()
 {
-    m_pScnMgr->ResetMarkedInstanceCounter();
-
-    LiteMath::uint *instance_counter = m_pScnMgr->GetInstanceCounterMem();
-    *((LiteMath::uint *)m_ssboMappedMem) = *instance_counter;
+    m_instIndirectCmd.instanceCount = 0;
+    ((VkDrawIndexedIndirectCommand *)m_ssboMappedMem)->instanceCount = m_instIndirectCmd.instanceCount;
 }
 
 void SimpleShadowmapRender::ProcessInput(const AppInput &input)

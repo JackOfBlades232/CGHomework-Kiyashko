@@ -40,7 +40,7 @@ int main()
 
   initVulkanGLFW(app, window);
 
-  // @NOTE: I deleted the walls from this scene, for an unadaltrated scene from the
+  // @NOTE: I deleted the walls from this scene, for an unadulterated scene from the
   //        repository uncomment the second line and comment this one (get Serapis scene)
   app->LoadScene(VK_GRAPHICS_BASIC_ROOT "/resources/scenes/cornell/statex_00001.xml", false);
   //app->LoadScene(VK_GRAPHICS_BASIC_ROOT "/resources/scenes/Serapis/statex_00001.xml", false);

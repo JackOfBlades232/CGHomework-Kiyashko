@@ -50,8 +50,8 @@ private:
     etna::Buffer constants;
     etna::Buffer instanceMatrices;
     etna::Buffer instanceBboxes;
-    etna::Buffer instanceCommands;
-    etna::Buffer instanceCounter;
+    etna::Buffer instanceIndices;
+    etna::Buffer indirectCommand;
 
     VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
 
@@ -75,6 +75,8 @@ private:
 
     UniformParams m_uniforms {};
     void* m_uboMappedMem = nullptr;
+
+    VkDrawIndexedIndirectCommand m_instIndirectCmd = {};
     void* m_ssboMappedMem = nullptr;
 
     etna::GraphicsPipeline m_basicForwardPipeline {};

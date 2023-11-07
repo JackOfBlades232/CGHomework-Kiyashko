@@ -30,6 +30,15 @@ SceneManager::SceneManager(VkDevice a_device, VkPhysicalDevice a_physDevice,
     m_pMeshData   = std::make_shared<Mesh8F>();
 }
 
+void SceneManager::FillIndirectCommand(VkDrawIndexedIndirectCommand& cmd, uint32_t meshId)
+{
+    cmd.indexCount    = m_meshInfos[meshId].m_indNum;
+    cmd.instanceCount = 0;
+    cmd.firstIndex    = m_meshInfos[meshId].m_indexOffset;
+    cmd.vertexOffset  = m_meshInfos[meshId].m_vertexOffset;
+    cmd.firstInstance = 0;
+}
+
 bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
 {
     auto hscene_main = std::make_shared<hydra_xml::HydraScene>();
@@ -72,9 +81,12 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
                         InstanceMesh(meshId, instance);
                     }
         }
+
+        // @HACK: ensure single mesh
+        break;
     }
 
-    m_instanceCounter = 0;
+    m_instanceIndices.resize(m_instanceMatrices.size());
 
     LoadGeoDataOnGPU();
     hscene_main = nullptr;
@@ -195,14 +207,6 @@ uint32_t SceneManager::InstanceMesh(const uint32_t meshId, const LiteMath::float
     info.instBufOffset = (m_instanceMatrices.size() - 1) * sizeof(matrix);
 
     m_instanceInfos.push_back(info);
-    m_instanceCommands.push_back(
-      VkDrawIndexedIndirectCommand{
-        m_meshInfos[meshId].m_indNum, 
-        1,
-        m_meshInfos[meshId].m_indexOffset, 
-        m_meshInfos[meshId].m_vertexOffset, 
-        0
-      });
 
     Box4f instBox;
     for (uint32_t i = 0; i < 8; ++i) {

@@ -157,8 +157,6 @@ void SimpleShadowmapRender::DestroyPipelines()
 
 void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {
-  VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
-
   VkDeviceSize zero_offset = 0u;
   VkBuffer vertexBuf = m_pScnMgr->GetVertexBuffer();
   VkBuffer indexBuf  = m_pScnMgr->GetIndexBuffer();
@@ -172,7 +170,7 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
     auto inst         = m_pScnMgr->GetInstanceInfo(i);
     pushConst2M.model = m_pScnMgr->GetInstanceMatrix(i);
     vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.getVkPipelineLayout(),
-      stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
+      VK_SHADER_STAGE_GEOMETRY_BIT, 0, sizeof(pushConst2M), &pushConst2M);
 
     auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
     vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);

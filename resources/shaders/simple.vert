@@ -4,34 +4,21 @@
 
 #include "unpack_attributes.h"
 
-
 layout(location = 0) in vec4 vPosNorm;
 layout(location = 1) in vec4 vTexCoordAndTang;
 
-layout(push_constant) uniform params_t
+layout(location = 0) out VS_OUT
 {
-    mat4 mProjView;
-    mat4 mModel;
-} params;
-
-
-layout (location = 0 ) out VS_OUT
-{
-    vec3 wPos;
-    vec3 wNorm;
-    vec3 wTangent;
+    vec3 mPos;
+    vec3 mNorm;
+    vec3 mTangent;
     vec2 texCoord;
 } vOut;
 
 void main(void)
 {
-    const vec4 wNorm = vec4(DecodeNormal(floatBitsToInt(vPosNorm.w)),         0.0f);
-    const vec4 wTang = vec4(DecodeNormal(floatBitsToInt(vTexCoordAndTang.z)), 0.0f);
-
-    vOut.wPos     = (params.mModel * vec4(vPosNorm.xyz, 1.0f)).xyz;
-    vOut.wNorm    = normalize(mat3(transpose(inverse(params.mModel))) * wNorm.xyz);
-    vOut.wTangent = normalize(mat3(transpose(inverse(params.mModel))) * wTang.xyz);
+    vOut.mPos     = vPosNorm.xyz;
+    vOut.mNorm    = normalize(DecodeNormal(floatBitsToInt(vPosNorm.w)));
+    vOut.mTangent = normalize(DecodeNormal(floatBitsToInt(vTexCoordAndTang.z)));
     vOut.texCoord = vTexCoordAndTang.xy;
-
-    gl_Position   = params.mProjView * vec4(vOut.wPos, 1.0);
 }

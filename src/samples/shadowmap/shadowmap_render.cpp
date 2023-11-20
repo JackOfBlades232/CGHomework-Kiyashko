@@ -119,6 +119,8 @@ void SimpleShadowmapRender::loadShaders()
   etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
   etna::create_program("simple_gpass", 
       {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_gpass.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+  etna::create_program("simple_lpass", 
+      {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_lpass.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/fullscreen_quad.vert.spv"});
 }
 
 void SimpleShadowmapRender::SetupSimplePipeline()
@@ -169,6 +171,16 @@ void SimpleShadowmapRender::SetupSimplePipeline()
           .depthAttachmentFormat = vk::Format::eD32Sfloat
         }
     });
+
+  m_lightPassPipeline = pipelineManager.createGraphicsPipeline("simple_lpass",
+    { 
+      .vertexShaderInput    = etna::VertexShaderInputDescription{ .bindings = {} },
+      .fragmentShaderOutput =
+        {
+          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
+          .depthAttachmentFormat = vk::Format::eD32Sfloat
+        }
+    });
 }
 
 void SimpleShadowmapRender::DestroyPipelines()
@@ -204,6 +216,13 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
   }
 }
 
+void SimpleShadowmapRender::DrawFinalImageCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
+{
+    // @TODO: move a_wvp from uniform buffer to push constants
+
+    vkCmdDraw(a_cmdBuff, 3, 1, 0, 0);
+}
+
 void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
   vkResetCommandBuffer(a_cmdBuff, 0);
@@ -235,6 +254,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   //// draw final scene to screen
   //
   {
+    /*
     auto simpleMaterialInfo = etna::get_shader_program("simple_material");
 
     auto set = etna::create_descriptor_set(simpleMaterialInfo.getDescriptorLayoutId(0), a_cmdBuff,
@@ -254,6 +274,26 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
       m_basicForwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
     DrawSceneCmd(a_cmdBuff, m_worldViewProj);
+    */
+    auto simpleLpassInfo = etna::get_shader_program("simple_lpass");
+
+    auto set = etna::create_descriptor_set(simpleLpassInfo.getDescriptorLayoutId(0), a_cmdBuff,
+    {
+      etna::Binding {0, constants.genBinding()},
+      etna::Binding {1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding {2, gNormal.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding {3, geomPassDepth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
+    });
+
+    VkDescriptorSet vkSet = set.getVkSet();
+
+    etna::RenderTargetState renderTargets(a_cmdBuff, {m_width, m_height}, {{a_targetImage, a_targetImageView}}, mainViewDepth);
+
+    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_lightPassPipeline.getVkPipeline());
+    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_lightPassPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+    DrawFinalImageCmd(a_cmdBuff, m_worldViewProj);
   }
 
   if(m_input.drawFSQuad)

@@ -5,10 +5,9 @@ layout(push_constant) uniform params_t
 {
   vec4 scaleAndOffs;
   vec4 depthMinMaxScale;
-
 } params;
 
-layout (location = 0 ) out VS_OUT
+layout (location = 0) out VS_OUT
 {
   vec2 texCoord;
 } vOut;

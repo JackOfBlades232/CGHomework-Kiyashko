@@ -45,6 +45,7 @@ public:
 
 private:
   etna::GlobalContext* m_context;
+  etna::Image geomPassDepth;
   etna::Image mainViewDepth;
   etna::Image shadowMap;
   etna::Image gNormal;

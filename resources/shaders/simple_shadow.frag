@@ -30,10 +30,10 @@ void main()
 
     const vec3 normal = textureLod(gNormal, screenCoord, 0).xyz;
     const float depth = textureLod(gDepth, screenCoord, 0).x;
-    const vec4 pos_hom = inverse(Params.projViewMatrix) * vec4(screenCoord, depth, 1.0);
+    const vec4 pos_hom = inverse(Params.projViewMatrix) * vec4((2.0*screenCoord)-1.0, depth, 1.0);
     const vec3 pos = (pos_hom / pos_hom.w).xyz;
 
-    const vec4 posLightClipSpace = Params.lightMatrix*vec4(surf.wPos, 1.0f); // 
+    const vec4 posLightClipSpace = Params.lightMatrix*vec4(pos, 1.0f); // 
     const vec3 posLightSpaceNDC  = posLightClipSpace.xyz/posLightClipSpace.w;    // for orto matrix, we don't need perspective division, you can remove it if you want; this is general case;
     const vec2 shadowTexCoord    = posLightSpaceNDC.xy*0.5f + vec2(0.5f, 0.5f);  // just shift coords from [-1,1] to [0,1]               
 

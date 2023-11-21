@@ -31,6 +31,14 @@ void SimpleShadowmapRender::AllocateResources()
     .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
   });
 
+  intermediateFrame = m_context->createImage(etna::Image::CreateInfo
+  {
+    .extent = vk::Extent3D{m_width, m_height, 1},
+    .name = "intermediate_frame",
+    .format = static_cast<vk::Format>(m_swapchain.GetFormat()),
+    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferSrc
+  });
+
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
   constants = m_context->createBuffer(etna::Buffer::CreateInfo
   {
@@ -63,6 +71,7 @@ void SimpleShadowmapRender::DeallocateResources()
 {
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   shadowMap.reset();
+  intermediateFrame.reset();
   m_swapchain.Cleanup();
   vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
 
@@ -99,6 +108,7 @@ void SimpleShadowmapRender::loadShaders()
   etna::create_program("simple_material",
     {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
   etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+  etna::create_program("gauss_post_proc", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/gauss_post_proc.comp.spv"});
 }
 
 void SimpleShadowmapRender::SetupSimplePipeline()
@@ -140,6 +150,8 @@ void SimpleShadowmapRender::SetupSimplePipeline()
           .depthAttachmentFormat = vk::Format::eD16Unorm
         }
     });
+
+  m_postprocPipeline = pipelineManager.createComputePipeline("gauss_post_proc", {});
 }
 
 void SimpleShadowmapRender::DestroyPipelines()
@@ -207,13 +219,76 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
     VkDescriptorSet vkSet = set.getVkSet();
 
-    etna::RenderTargetState renderTargets(a_cmdBuff, {m_width, m_height}, {{a_targetImage, a_targetImageView}}, mainViewDepth);
+    etna::RenderTargetState renderTargets(a_cmdBuff, { m_width, m_height }, { { intermediateFrame.get(), intermediateFrame.getView({}) } }, mainViewDepth);
 
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_basicForwardPipeline.getVkPipeline());
     vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
       m_basicForwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
     DrawSceneCmd(a_cmdBuff, m_worldViewProj);
+  }
+
+  //// Apply gaussian blur in compute shader to the swapchain image
+  //
+  {
+    auto gaussPostprocInfo = etna::get_shader_program("gauss_post_proc");
+
+    auto set = etna::create_descriptor_set(gaussPostprocInfo.getDescriptorLayoutId(0), a_cmdBuff,
+    {
+      etna::Binding {0, intermediateFrame.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)}
+    });
+
+    VkDescriptorSet vkSet = set.getVkSet();
+
+    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_postprocPipeline.getVkPipeline());
+    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
+      m_postprocPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+    // @TODO: set correct work groups
+    vkCmdDispatch(a_cmdBuff, 32, 32, 1);
+  }
+
+  // @TODO: does a mem barrier go here?
+
+  {
+    /*
+    VkImageCopy region = {};
+    region.srcOffset                     = { 0, 0, 0 };
+    region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.mipLevel       = 0;
+    region.srcSubresource.baseArrayLayer = 0;
+    region.srcSubresource.layerCount     = 1;
+    region.dstOffset                     = { 0, 0, 0 };
+    region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.dstSubresource.mipLevel       = 0;
+    region.dstSubresource.baseArrayLayer = 0;
+    region.dstSubresource.layerCount     = 1;
+    region.extent                        = { m_width, m_height, 1 };
+
+    vkCmdCopyImage(a_cmdBuff,
+                   intermediateFrame.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                   a_targetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                   1, &region);
+    */
+
+    VkImageBlit region = {};
+    region.srcOffsets[0]                 = { 0, 0, 0 };
+    region.srcOffsets[1]                 = { (int)m_width, (int)m_height, 1 };
+    region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.srcSubresource.mipLevel       = 0;
+    region.srcSubresource.baseArrayLayer = 0;
+    region.srcSubresource.layerCount     = 1;
+    region.dstOffsets[0]                 = { 0, 0, 0 };
+    region.dstOffsets[1]                 = { (int)m_width, (int)m_height, 1 };
+    region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.dstSubresource.mipLevel       = 0;
+    region.dstSubresource.baseArrayLayer = 0;
+    region.dstSubresource.layerCount     = 1;
+    vkCmdBlitImage(a_cmdBuff, 
+                   intermediateFrame.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                   a_targetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                   1, &region, 
+                   VK_FILTER_NEAREST);
   }
 
   if(m_input.drawFSQuad)

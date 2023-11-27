@@ -50,6 +50,7 @@ private:
   etna::Image intermediateFrame;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
+  etna::Buffer gaussCoeffs;
 
   VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
 

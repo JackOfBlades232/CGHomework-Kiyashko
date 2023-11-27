@@ -41,8 +41,14 @@ using shader_bool  = LiteMath::uint;
 
 #endif
 
-#define WORK_GROUP_DIM    16
-#define GAUSS_WINDOW_SIZE 11
+#define WORK_GROUP_DIM         16
+// @NOTE: if you make window size = 2k it will be treated as if it is 2k+1
+#define GAUSS_WINDOW_SIZE_BASE 11
+#define GAUSS_WINDOW_HALFSIZE  (GAUSS_WINDOW_SIZE_BASE/2)
+#define GAUSS_WINDOW_SIZE      (GAUSS_WINDOW_HALFSIZE*2)
+
+#define BLUR_SIGMA 1.84089642
+#define PI         3.14159265359
 
 struct UniformParams
 {

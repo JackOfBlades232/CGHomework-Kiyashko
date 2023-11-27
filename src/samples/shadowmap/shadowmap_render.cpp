@@ -4,6 +4,7 @@
 #include <vk_pipeline.h>
 #include <vk_buffers.h>
 #include <iostream>
+#include <cmath>
 
 #include <etna/GlobalContext.hpp>
 #include <etna/Etna.hpp>
@@ -40,6 +41,7 @@ void SimpleShadowmapRender::AllocateResources()
   });
 
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
+
   constants = m_context->createBuffer(etna::Buffer::CreateInfo
   {
     .size = sizeof(UniformParams),
@@ -47,8 +49,26 @@ void SimpleShadowmapRender::AllocateResources()
     .memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY,
     .name = "constants"
   });
-
   m_uboMappedMem = constants.map();
+
+  // @NOTE: doing this dumb 16-byte padding f*ckery cause f*ck uniform buffers and their layouts
+  gaussCoeffs = m_context->createBuffer(etna::Buffer::CreateInfo
+  {
+    .size = 16 * GAUSS_WINDOW_SIZE,
+    .bufferUsage = vk::BufferUsageFlagBits::eUniformBuffer,
+    .memoryUsage = VMA_MEMORY_USAGE_CPU_ONLY,
+    .name = "gauss_coeffs"
+  });
+  shader_float *mapped_mem = (shader_float *)gaussCoeffs.map();
+
+  constexpr float invTwoSigmaSq = 1.0 / (BLUR_SIGMA * BLUR_SIGMA * 2.0);
+  const float coeff             = sqrt(invTwoSigmaSq * (1.0 / M_PI));
+
+  for (int i = 0; i < GAUSS_WINDOW_SIZE; i++) 
+  {
+    float offset = (float)GAUSS_WINDOW_HALFSIZE - i;
+    mapped_mem[i * (16 / sizeof(float))] = coeff * expf(-offset * offset * invTwoSigmaSq);
+  }
 }
 
 void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
@@ -76,6 +96,7 @@ void SimpleShadowmapRender::DeallocateResources()
   vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
 
   constants = etna::Buffer();
+  gaussCoeffs = etna::Buffer();
 }
 
 
@@ -235,7 +256,8 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
     auto set = etna::create_descriptor_set(gaussPostprocInfo.getDescriptorLayoutId(0), a_cmdBuff,
     {
-      etna::Binding {0, intermediateFrame.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)}
+      etna::Binding {0, intermediateFrame.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
+      etna::Binding {1, gaussCoeffs.genBinding()}
     });
 
     VkDescriptorSet vkSet = set.getVkSet();
@@ -250,26 +272,6 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   // @TODO: does a mem barrier go here?
 
   {
-    /*
-    VkImageCopy region = {};
-    region.srcOffset                     = { 0, 0, 0 };
-    region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.srcSubresource.mipLevel       = 0;
-    region.srcSubresource.baseArrayLayer = 0;
-    region.srcSubresource.layerCount     = 1;
-    region.dstOffset                     = { 0, 0, 0 };
-    region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.dstSubresource.mipLevel       = 0;
-    region.dstSubresource.baseArrayLayer = 0;
-    region.dstSubresource.layerCount     = 1;
-    region.extent                        = { m_width, m_height, 1 };
-
-    vkCmdCopyImage(a_cmdBuff,
-                   intermediateFrame.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-                   a_targetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-                   1, &region);
-    */
-
     VkImageBlit region = {};
     region.srcOffsets[0]                 = { 0, 0, 0 };
     region.srcOffsets[1]                 = { (int)m_width, (int)m_height, 1 };

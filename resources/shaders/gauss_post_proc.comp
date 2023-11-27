@@ -1,14 +1,35 @@
 #version 450
 #extension GL_ARB_shader_image_load_store : enable
+#extension GL_GOOGLE_include_directive : require
 
-layout(local_size_x = 16, local_size_y = 16) in;
+#include "common.h"
+
+layout(local_size_x = WORK_GROUP_DIM, local_size_y = WORK_GROUP_DIM) in;
 
 layout(binding = 0, rgba8) uniform image2D framebuffer;
+
+#define TEX_REGION_DIM (WORK_GROUP_DIM + GAUSS_WINDOW_SIZE/2)
+shared vec3 texture_region_cache[TEX_REGION_DIM][TEX_REGION_DIM];
 
 void main() 
 {
     ivec2 imSize = imageSize(framebuffer);
-    ivec2 imCoord = ivec2(gl_GlobalInvocationID.xy);
-    vec4 col = imageLoad(framebuffer, imCoord);
-    imageStore(framebuffer, imSize - imCoord - 1, col);
+    ivec2 localCoord = ivec2(gl_LocalInvocationID.xy);
+    ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
+
+    if (globalCoord.x >= imSize.x || globalCoord.y >= imSize.y)
+        return;
+
+    texture_region_cache[localCoord.y][localCoord.x] = imageLoad(framebuffer, globalCoord).xyz;
+
+    barrier();
+
+    ivec2 dstLocCoord = ivec2(WORK_GROUP_DIM - localCoord.x - 1,
+                              WORK_GROUP_DIM - localCoord.y - 1);
+    ivec2 dstCoord = globalCoord - localCoord + dstLocCoord;
+
+    if (dstCoord.x >= imSize.x || dstCoord.y >= imSize.y)
+        return;
+
+    imageStore(framebuffer, dstCoord, vec4(texture_region_cache[localCoord.y][localCoord.x], 1.0));
 }

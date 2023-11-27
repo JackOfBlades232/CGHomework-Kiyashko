@@ -244,8 +244,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
       m_postprocPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
-    // @TODO: set correct work groups
-    vkCmdDispatch(a_cmdBuff, 32, 32, 1);
+    vkCmdDispatch(a_cmdBuff, (m_width-1) / WORK_GROUP_DIM + 1, (m_height-1) / WORK_GROUP_DIM + 1, 1);
   }
 
   // @TODO: does a mem barrier go here?

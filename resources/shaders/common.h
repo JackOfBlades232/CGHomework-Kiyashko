@@ -41,6 +41,8 @@ using shader_bool  = LiteMath::uint;
 
 #endif
 
+#define WORK_GROUP_DIM    16
+#define GAUSS_WINDOW_SIZE 11
 
 struct UniformParams
 {

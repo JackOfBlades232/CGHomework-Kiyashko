@@ -249,6 +249,13 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     DrawSceneCmd(a_cmdBuff, m_worldViewProj);
   }
 
+  etna::set_state(a_cmdBuff, intermediateFrame.get(), 
+    vk::PipelineStageFlagBits2::eComputeShader,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eShaderWrite),
+    vk::ImageLayout::eGeneral,
+    vk::ImageAspectFlagBits::eColor);
+  etna::flush_barriers(a_cmdBuff);
+
   //// Apply gaussian blur in compute shader to the swapchain image
   //
   {
@@ -269,29 +276,14 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     vkCmdDispatch(a_cmdBuff, (m_width-1) / WORK_GROUP_DIM + 1, (m_height-1) / WORK_GROUP_DIM + 1, 1);
   }
 
-  VkImageMemoryBarrier barrier = {};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-  barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-  barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-  barrier.image = intermediateFrame.get();
-  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  barrier.subresourceRange.baseMipLevel = 0;
-  barrier.subresourceRange.baseArrayLayer = 0;
-  barrier.subresourceRange.levelCount = 1;
-  barrier.subresourceRange.layerCount = 1;
-  vkCmdPipelineBarrier(
-    a_cmdBuff,
-    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-    VK_PIPELINE_STAGE_TRANSFER_BIT,
-    0,
-    0,
-    nullptr,
-    0,
-    nullptr,
-    1,
-    &barrier);
+  etna::set_state(a_cmdBuff, intermediateFrame.get(), vk::PipelineStageFlagBits2::eBlit,
+    vk::AccessFlags2(vk::AccessFlagBits2::eMemoryRead), vk::ImageLayout::eTransferSrcOptimal,
+    vk::ImageAspectFlagBits::eColor);
+  etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBlit,
+    vk::AccessFlags2(vk::AccessFlagBits2::eMemoryWrite), vk::ImageLayout::eTransferDstOptimal,
+    vk::ImageAspectFlagBits::eColor);
+
+  etna::flush_barriers(a_cmdBuff);
 
   {
     VkImageBlit region = {};

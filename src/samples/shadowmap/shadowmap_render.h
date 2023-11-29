@@ -97,6 +97,9 @@ private:
   VkDeviceMemory m_uboAlloc = VK_NULL_HANDLE;
   void* m_uboMappedMem = nullptr;
 
+  VkBuffer m_ssboInstances      = VK_NULL_HANDLE;
+  VkDeviceMemory m_ssboInstancesAlloc = VK_NULL_HANDLE;
+
   pipeline_data_t m_basicForwardPipeline {};
   pipeline_data_t m_shadowPipeline {};
 
@@ -166,6 +169,9 @@ private:
   } m_light;
  
   void DrawFrameSimple();
+
+  void SetupView();
+  void InitSceneResources();
 
   void CreateInstance();
   void CreateDevice(uint32_t a_deviceId);

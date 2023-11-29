@@ -273,6 +273,9 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
   pushConst2M.projView = a_wvp;
   for (uint32_t i = 0; i < m_pScnMgr->InstancesNum(); ++i)
   {
+    if (i == 1)
+      continue;
+
     auto inst         = m_pScnMgr->GetInstanceInfo(i);
     pushConst2M.model = m_pScnMgr->GetInstanceMatrix(i);
     vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.layout, stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
@@ -280,6 +283,7 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
     auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
     vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
   }
+
   for (int i = 0; i < 10000; ++i)
   {
     auto inst         = m_pScnMgr->GetInstanceInfo(1);
@@ -526,9 +530,16 @@ void SimpleShadowmapRender::UpdateView()
   auto mWorldViewProj = mProjFix * mProj * mLookAt;
   
   m_worldViewProj = mWorldViewProj;
+}
+
+void SimpleShadowmapRender::SetupView()
+{
+  UpdateView();
   
   ///// calc light matrix
   //
+  LiteMath::float4x4 mProjFix, mProj, mLookAt, mWorldViewProj;
+
   if(m_light.usePerspectiveM)
     mProj = perspectiveMatrix(m_light.cam.fov, 1.0f, 1.0f, m_light.lightTargetDist*2.0f);
   else
@@ -556,13 +567,94 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
   m_cam.up  = float3(loadedCam.up);
   m_cam.lookAt = float3(loadedCam.lookAt);
   m_cam.tdist  = loadedCam.farPlane;
-  UpdateView();
+
+  SetupView();
+  InitSceneResources();
 
   for (uint32_t i = 0; i < m_framesInFlight; ++i)
   {
     BuildCommandBufferSimple(m_cmdBuffersDrawMain[i], m_frameBuffers[i],
                              m_swapchain.GetAttachment(i).view, m_basicForwardPipeline.pipeline);
   }
+}
+
+void SimpleShadowmapRender::InitSceneResources()
+{
+  constexpr uint32_t numInstances = 10000;
+  const uint32_t instBufferSize = sizeof(LiteMath::float4x4) * numInstances;
+
+  // @TODO: factor out to "createBuffer"
+  VkMemoryRequirements memReq;
+  VkDeviceMemory stagingAlloc = VK_NULL_HANDLE;
+  void *stagingMappedMem = nullptr;
+  VkBuffer stagingBuffer = vk_utils::createBuffer(m_device, instBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, &memReq);
+
+  VkMemoryAllocateInfo allocateInfo = {};
+  allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocateInfo.pNext = nullptr;
+  allocateInfo.allocationSize = memReq.size;
+  allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(memReq.memoryTypeBits,
+                                                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                                          m_physicalDevice);
+  VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocateInfo, nullptr, &stagingAlloc));
+  VK_CHECK_RESULT(vkBindBufferMemory(m_device, stagingBuffer, stagingAlloc, 0));
+
+  vkMapMemory(m_device, stagingAlloc, 0, instBufferSize, 0, &stagingMappedMem);
+  LiteMath::float4x4 *instMem = static_cast<LiteMath::float4x4 *>(stagingMappedMem);
+  for (int i = 0; i < numInstances; ++i)
+  {
+    auto instMatr     = m_pScnMgr->GetInstanceMatrix(1);
+    float offset      = (i / 100 - 50) * 2;
+    instMatr.col(3).x += offset;
+    instMatr.col(3).y += offset;
+    
+    instMem[i] = instMatr;
+  }
+  vkUnmapMemory(m_device, stagingAlloc);
+
+
+  m_ssboInstances = vk_utils::createBuffer(m_device, instBufferSize,
+                                           VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                           &memReq);
+  allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  allocateInfo.pNext = nullptr;
+  allocateInfo.allocationSize = memReq.size;
+  allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(memReq.memoryTypeBits,
+                                                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                          m_physicalDevice);
+  VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocateInfo, nullptr, &m_ssboInstancesAlloc));
+  VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_ssboInstances, m_ssboInstancesAlloc, 0));
+
+  // @TODO: and this too
+  VkCommandBuffer copyBuffer = vk_utils::createCommandBuffer(m_device, m_commandPool);
+  VkCommandBufferBeginInfo beginInfo {};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(copyBuffer, &beginInfo);
+
+  VkBufferCopy copyRegion {};
+  copyRegion.size = instBufferSize;
+  vkCmdCopyBuffer(copyBuffer, stagingBuffer, m_ssboInstances, 1, &copyRegion);
+
+  vkEndCommandBuffer(copyBuffer);
+
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers    = &copyBuffer;
+
+  vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(m_graphicsQueue);
+
+  vkFreeCommandBuffers(m_device, m_commandPool, 1, &copyBuffer);
+
+  vkFreeMemory(m_device, stagingAlloc, nullptr);
+  vkDestroyBuffer(m_device, stagingBuffer, nullptr);
+
+  // @TODO: do I free the ssbo?
 }
 
 void SimpleShadowmapRender::DrawFrameSimple()

@@ -103,6 +103,8 @@ private:
   pipeline_data_t m_basicForwardPipeline {};
   pipeline_data_t m_shadowPipeline {};
 
+  VkDescriptorSet m_shadowDS = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_shadowDSLayout = VK_NULL_HANDLE;
   VkDescriptorSet m_dSet = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_dSetLayout = VK_NULL_HANDLE;
   VkRenderPass m_screenRenderPass = VK_NULL_HANDLE; // main renderpass

@@ -12,14 +12,12 @@ layout (location = 0 ) in VS_OUT
   vec3 wNorm;
 } surf;
 
-layout(binding = 0, set = 0) uniform AppData
+layout(binding = 1, set = 0) uniform AppData
 {
   UniformParams Params;
 };
 
-layout (binding = 1) uniform sampler2D shadowMap;
-
-// @TODO: was the dummy taylor series doing smth? Double check the math
+layout (binding = 2) uniform sampler2D shadowMap;
 
 void main()
 {

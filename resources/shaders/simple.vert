@@ -13,12 +13,16 @@ layout(push_constant) uniform params_t
     mat4 mModel;
 } params;
 
-
-layout (location = 0 ) out VS_OUT
+layout(location = 0) out VS_OUT
 {
     vec3 wPos;
     vec3 wNorm;
 } vOut;
+
+layout(binding = 0, std430) buffer InstanceMatrices
+{
+    mat4 instMatrices[];
+};
 
 out gl_PerVertex { vec4 gl_Position; };
 void main(void)

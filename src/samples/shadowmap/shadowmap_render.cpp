@@ -156,17 +156,23 @@ void SimpleShadowmapRender::CreateDevice(uint32_t a_deviceId)
 void SimpleShadowmapRender::SetupSimplePipeline()
 {
   std::vector<std::pair<VkDescriptorType, uint32_t> > dtypes = {
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             2},
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,             1},
       {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,     2}
   };
 
-  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 2);
+  m_pBindings = std::make_shared<vk_utils::DescriptorMaker>(m_device, dtypes, 3);
   
   auto shadowMap = m_pShadowMap2->m_attachments[m_shadowMapId];
 
-  m_pBindings->BindBegin(VK_SHADER_STAGE_FRAGMENT_BIT);
-  m_pBindings->BindBuffer(0, m_ubo, VK_NULL_HANDLE, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-  m_pBindings->BindImage (1, shadowMap.view, m_pShadowMap2->m_sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+  m_pBindings->BindBegin(VK_SHADER_STAGE_VERTEX_BIT);
+  m_pBindings->BindBuffer(0, m_ssboInstances, VK_NULL_HANDLE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+  m_pBindings->BindEnd(&m_shadowDS, &m_shadowDSLayout);
+
+  m_pBindings->BindBegin(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+  m_pBindings->BindBuffer(0, m_ssboInstances, VK_NULL_HANDLE, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+  m_pBindings->BindBuffer(1, m_ubo, VK_NULL_HANDLE, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+  m_pBindings->BindImage (2, shadowMap.view, m_pShadowMap2->m_sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
   m_pBindings->BindEnd(&m_dSet, &m_dSetLayout);
 
   //m_pBindings->BindImage(0, m_GBufTarget->m_attachments[m_GBuf_idx[GBUF_ATTACHMENT::POS_Z]].view, m_GBufTarget->m_sampler, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -223,7 +229,7 @@ void SimpleShadowmapRender::SetupSimplePipeline()
   maker.viewport.height = float(m_pShadowMap2->m_resolution.height);
   maker.scissor.extent  = VkExtent2D{ uint32_t(m_pShadowMap2->m_resolution.width), uint32_t(m_pShadowMap2->m_resolution.height) };
 
-  m_shadowPipeline.layout   = m_basicForwardPipeline.layout;
+  m_shadowPipeline.layout   = maker.MakeLayout(m_device, {m_shadowDSLayout}, sizeof(pushConst2M));
   m_shadowPipeline.pipeline = maker.MakePipeline(m_device, m_pScnMgr->GetPipelineVertexInputStateCreateInfo(), 
                                                  m_pShadowMap2->m_renderPass);                                                       
 }
@@ -337,6 +343,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   vkCmdBeginRenderPass(a_cmdBuff, &renderToShadowMap, VK_SUBPASS_CONTENTS_INLINE);
   {
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.pipeline);
+    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.layout, 0, 1, &m_shadowDS, 0, VK_NULL_HANDLE);
     DrawSceneCmd(a_cmdBuff, m_lightMatrix);
   }
   vkCmdEndRenderPass(a_cmdBuff);
@@ -581,7 +588,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 void SimpleShadowmapRender::InitSceneResources()
 {
   constexpr uint32_t numInstances = 10000;
-  const uint32_t instBufferSize = sizeof(LiteMath::float4x4) * numInstances;
+  const uint32_t instBufferSize = sizeof(mat4) * numInstances;
 
   // @TODO: factor out to "createBuffer"
   VkMemoryRequirements memReq;
@@ -601,7 +608,7 @@ void SimpleShadowmapRender::InitSceneResources()
   VK_CHECK_RESULT(vkBindBufferMemory(m_device, stagingBuffer, stagingAlloc, 0));
 
   vkMapMemory(m_device, stagingAlloc, 0, instBufferSize, 0, &stagingMappedMem);
-  LiteMath::float4x4 *instMem = static_cast<LiteMath::float4x4 *>(stagingMappedMem);
+  mat4 *instMem = static_cast<mat4 *>(stagingMappedMem);
   for (int i = 0; i < numInstances; ++i)
   {
     auto instMatr     = m_pScnMgr->GetInstanceMatrix(1);
@@ -646,8 +653,8 @@ void SimpleShadowmapRender::InitSceneResources()
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers    = &copyBuffer;
 
-  vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(m_graphicsQueue);
+  vkQueueSubmit(m_transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(m_transferQueue);
 
   vkFreeCommandBuffers(m_device, m_commandPool, 1, &copyBuffer);
 

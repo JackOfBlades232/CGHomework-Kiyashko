@@ -267,6 +267,7 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
 
 void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {
+  // @TODO: the usage of basic pipeline layout is wrong here bruv
   VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
   VkDeviceSize zero_offset = 0u;
@@ -290,17 +291,13 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
     vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
   }
 
-  for (int i = 0; i < 10000; ++i)
-  {
-    auto inst         = m_pScnMgr->GetInstanceInfo(1);
-    pushConst2M.model = m_pScnMgr->GetInstanceMatrix(1);
-    pushConst2M.model.col(3).x += (i / 100 - 50) * 2;
-    pushConst2M.model.col(3).y += (i % 100 - 50) * 2;
-    vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.layout, stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
-
-    auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
-    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
-  }
+  auto inst         = m_pScnMgr->GetInstanceInfo(1);
+  auto mesh_info    = m_pScnMgr->GetMeshInfo(inst.mesh_id);
+  // @HACK
+  pushConst2M.model = LiteMath::scale4x4(LiteMath::float3(0.f));
+  pushConst2M.model[3][3] = 0.f;
+  vkCmdPushConstants(a_cmdBuff, m_basicForwardPipeline.layout, stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
+  vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, numTeapotInstances, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
 }
 
 void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkFramebuffer a_frameBuff,
@@ -565,7 +562,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 {
   m_pScnMgr->LoadSceneXML(path, transpose_inst_matrices);
 
-  CreateUniformBuffer();
+  InitSceneResources();
   SetupSimplePipeline();
 
   auto loadedCam = m_pScnMgr->GetCamera(0);
@@ -576,7 +573,6 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
   m_cam.tdist  = loadedCam.farPlane;
 
   SetupView();
-  InitSceneResources();
 
   for (uint32_t i = 0; i < m_framesInFlight; ++i)
   {
@@ -587,8 +583,9 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 
 void SimpleShadowmapRender::InitSceneResources()
 {
-  constexpr uint32_t numInstances = 10000;
-  const uint32_t instBufferSize = sizeof(mat4) * numInstances;
+  CreateUniformBuffer();
+
+  const uint32_t instBufferSize = sizeof(mat4) * numTeapotInstances;
 
   // @TODO: factor out to "createBuffer"
   VkMemoryRequirements memReq;
@@ -609,12 +606,11 @@ void SimpleShadowmapRender::InitSceneResources()
 
   vkMapMemory(m_device, stagingAlloc, 0, instBufferSize, 0, &stagingMappedMem);
   mat4 *instMem = static_cast<mat4 *>(stagingMappedMem);
-  for (int i = 0; i < numInstances; ++i)
+  for (int i = 0; i < numTeapotInstances; ++i)
   {
     auto instMatr     = m_pScnMgr->GetInstanceMatrix(1);
-    float offset      = (i / 100 - 50) * 2;
-    instMatr.col(3).x += offset;
-    instMatr.col(3).y += offset;
+    instMatr.col(3).x += (i / 100 - 50) * 2;
+    instMatr.col(3).y += (i % 100 - 50) * 2;
     
     instMem[i] = instMatr;
   }
@@ -623,7 +619,7 @@ void SimpleShadowmapRender::InitSceneResources()
 
   m_ssboInstances = vk_utils::createBuffer(m_device, instBufferSize,
                                            VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                            &memReq);
   allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   allocateInfo.pNext = nullptr;

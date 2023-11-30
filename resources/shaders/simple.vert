@@ -29,8 +29,15 @@ void main(void)
 {
     const vec4 wNorm = vec4(DecodeNormal(floatBitsToInt(vPosNorm.w)),         0.0f);
 
-    vOut.wPos     = (params.mModel * vec4(vPosNorm.xyz, 1.0f)).xyz;
-    vOut.wNorm    = normalize(mat3(transpose(inverse(params.mModel))) * wNorm.xyz);
+    // @HACK
+    mat4 mModel;
+    if (params.mModel[3][3] != 1.0)
+        mModel = instMatrices[gl_InstanceIndex];
+    else
+        mModel = params.mModel;
+
+    vOut.wPos     = (mModel * vec4(vPosNorm.xyz, 1.0f)).xyz;
+    vOut.wNorm    = normalize(mat3(transpose(inverse(mModel))) * wNorm.xyz);
 
     gl_Position   = params.mProjView * vec4(vOut.wPos, 1.0);
 }

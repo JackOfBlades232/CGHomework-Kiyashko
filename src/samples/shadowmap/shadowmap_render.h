@@ -62,6 +62,7 @@ public:
 
   VkDebugReportCallbackEXT m_debugReportCallback = nullptr;
 private:
+  const int numTeapotInstances = 10000;
 
   VkInstance       m_instance       = VK_NULL_HANDLE;
   VkCommandPool    m_commandPool    = VK_NULL_HANDLE;

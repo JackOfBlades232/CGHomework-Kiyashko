@@ -175,6 +175,7 @@ private:
 
   void SetupView();
   void InitSceneResources();
+  void PrepareShadowmap();
 
   void CreateInstance();
   void CreateDevice(uint32_t a_deviceId);

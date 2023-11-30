@@ -96,7 +96,7 @@ void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface, bool)
 
   // create shadow map
   //
-  m_pShadowMap2 = std::make_shared<vk_utils::RenderTarget>(m_device, VkExtent2D{8192, 8192});
+  m_pShadowMap2 = std::make_shared<vk_utils::RenderTarget>(m_device, VkExtent2D{2048, 2048});
 
   vk_utils::AttachmentInfo infoDepth;
   infoDepth.format           = VK_FORMAT_D16_UNORM;
@@ -330,21 +330,6 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   vkCmdSetViewport(a_cmdBuff, 0, 1, viewports.data());
   vkCmdSetScissor(a_cmdBuff, 0, 1, scissors.data());
 
-  //// draw scene to shadowmap
-  //
-  VkClearValue clearDepth = {};
-  clearDepth.depthStencil.depth   = 1.0f;
-  clearDepth.depthStencil.stencil = 0;
-  std::vector<VkClearValue> clear =  {clearDepth};
-  VkRenderPassBeginInfo renderToShadowMap = m_pShadowMap2->GetRenderPassBeginInfo(0, clear);
-  vkCmdBeginRenderPass(a_cmdBuff, &renderToShadowMap, VK_SUBPASS_CONTENTS_INLINE);
-  {
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.pipeline);
-    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.layout, 0, 1, &m_shadowDS, 0, VK_NULL_HANDLE);
-    DrawSceneCmd(a_cmdBuff, m_lightMatrix);
-  }
-  vkCmdEndRenderPass(a_cmdBuff);
-
   //// draw final scene to screen
   //
   {
@@ -573,6 +558,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
   m_cam.tdist  = loadedCam.farPlane;
 
   SetupView();
+  PrepareShadowmap();
 
   for (uint32_t i = 0; i < m_framesInFlight; ++i)
   {
@@ -631,33 +617,74 @@ void SimpleShadowmapRender::InitSceneResources()
   VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_ssboInstances, m_ssboInstancesAlloc, 0));
 
   // @TODO: and this too
-  VkCommandBuffer copyBuffer = vk_utils::createCommandBuffer(m_device, m_commandPool);
+  VkCommandBuffer cmdBuf = vk_utils::createCommandBuffer(m_device, m_commandPool);
   VkCommandBufferBeginInfo beginInfo {};
   beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  vkBeginCommandBuffer(copyBuffer, &beginInfo);
+  VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuf, &beginInfo));
 
   VkBufferCopy copyRegion {};
   copyRegion.size = instBufferSize;
-  vkCmdCopyBuffer(copyBuffer, stagingBuffer, m_ssboInstances, 1, &copyRegion);
+  vkCmdCopyBuffer(cmdBuf, stagingBuffer, m_ssboInstances, 1, &copyRegion);
 
-  vkEndCommandBuffer(copyBuffer);
+  VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuf));
 
   VkSubmitInfo submitInfo{};
   submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers    = &copyBuffer;
+  submitInfo.pCommandBuffers    = &cmdBuf;
 
   vkQueueSubmit(m_transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
   vkQueueWaitIdle(m_transferQueue);
 
-  vkFreeCommandBuffers(m_device, m_commandPool, 1, &copyBuffer);
+  vkFreeCommandBuffers(m_device, m_commandPool, 1, &cmdBuf);
 
   vkFreeMemory(m_device, stagingAlloc, nullptr);
   vkDestroyBuffer(m_device, stagingBuffer, nullptr);
 
   // @TODO: do I free the ssbo?
+}
+
+void SimpleShadowmapRender::PrepareShadowmap()
+{
+  // @HACK waiting for instance ssbo
+  vkQueueWaitIdle(m_transferQueue);
+
+  VkCommandBuffer cmdBuf = vk_utils::createCommandBuffer(m_device, m_commandPool);
+
+  VkCommandBufferBeginInfo beginInfo = {};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuf, &beginInfo));
+
+  //// draw scene to shadowmap
+  //
+  VkClearValue clearDepth = {};
+  clearDepth.depthStencil.depth   = 1.0f;
+  clearDepth.depthStencil.stencil = 0;
+  std::vector<VkClearValue> clear =  {clearDepth};
+  VkRenderPassBeginInfo renderToShadowMap = m_pShadowMap2->GetRenderPassBeginInfo(0, clear);
+  vkCmdBeginRenderPass(cmdBuf, &renderToShadowMap, VK_SUBPASS_CONTENTS_INLINE);
+  {
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.pipeline);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.layout, 0, 1, &m_shadowDS, 0, VK_NULL_HANDLE);
+    DrawSceneCmd(cmdBuf, m_lightMatrix);
+  }
+  vkCmdEndRenderPass(cmdBuf);
+
+  VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuf));
+
+  VkSubmitInfo submitInfo{};
+  submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers    = &cmdBuf;
+
+  vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+  vkQueueWaitIdle(m_graphicsQueue);
+
+  vkFreeCommandBuffers(m_device, m_commandPool, 1, &cmdBuf);
 }
 
 void SimpleShadowmapRender::DrawFrameSimple()

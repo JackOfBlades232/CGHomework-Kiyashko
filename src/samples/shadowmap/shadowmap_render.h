@@ -14,6 +14,7 @@
 
 #include <string>
 #include <iostream>
+#include <functional>
 
 class SimpleShadowmapRender : public IRender
 {
@@ -93,22 +94,34 @@ private:
   float4x4 m_worldViewProj;
   float4x4 m_lightMatrix;    
 
-  UniformParams m_uniforms {};
-  VkBuffer m_ubo = VK_NULL_HANDLE;
+  UniformParams m_uniforms{};
+  VkBuffer m_ubo            = VK_NULL_HANDLE;
   VkDeviceMemory m_uboAlloc = VK_NULL_HANDLE;
-  void* m_uboMappedMem = nullptr;
+  void *m_uboMappedMem      = nullptr;
 
-  VkBuffer m_ssboInstances      = VK_NULL_HANDLE;
+  VkBuffer m_indirectCommand            = VK_NULL_HANDLE;
+  VkDeviceMemory m_indirectCommandAlloc = VK_NULL_HANDLE;
+  void *m_indirectCommandMappedMem      = nullptr;
+
+  VkBuffer m_ssboInstances            = VK_NULL_HANDLE;
   VkDeviceMemory m_ssboInstancesAlloc = VK_NULL_HANDLE;
+  VkBuffer m_ssboBoxes                = VK_NULL_HANDLE;
+  VkDeviceMemory m_ssboBoxesAlloc     = VK_NULL_HANDLE;
+
+  VkBuffer m_ssboInstanceIndices            = VK_NULL_HANDLE;
+  VkDeviceMemory m_ssboInstanceIndicesAlloc = VK_NULL_HANDLE;
 
   pipeline_data_t m_basicForwardPipeline {};
   pipeline_data_t m_shadowPipeline {};
+  pipeline_data_t m_cullingPipeline {};
 
-  VkDescriptorSet m_shadowDS = VK_NULL_HANDLE;
-  VkDescriptorSetLayout m_shadowDSLayout = VK_NULL_HANDLE;
-  VkDescriptorSet m_dSet = VK_NULL_HANDLE;
-  VkDescriptorSetLayout m_dSetLayout = VK_NULL_HANDLE;
-  VkRenderPass m_screenRenderPass = VK_NULL_HANDLE; // main renderpass
+  VkDescriptorSet m_shadowDS              = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_shadowDSLayout  = VK_NULL_HANDLE;
+  VkDescriptorSet m_dSet                  = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_dSetLayout      = VK_NULL_HANDLE;
+  VkDescriptorSet m_cullingDS             = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_cullingDSLayout = VK_NULL_HANDLE;
+  VkRenderPass m_screenRenderPass         = VK_NULL_HANDLE;// main renderpass
 
   std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
 
@@ -189,14 +202,26 @@ private:
   void CleanupPipelineAndSwapchain();
   void RecreateSwapChain();
 
-  void CreateUniformBuffer();
-  void UpdateUniformBuffer(float a_time);
-
   void Cleanup();
 
   void SetupDeviceFeatures();
   void SetupDeviceExtensions();
   void SetupValidationLayers();
+
+  void CreateUniformBuffer();
+  void UpdateUniformBuffer(float a_time);
+
+  void UpdateIndirectCommand();
+
+  void CreateAndAllocateBuffer(VkBuffer &buf, VkDeviceMemory &mem, VkDeviceSize size,
+                               VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryFlags);
+  void CopyBuffer(VkBuffer &src, VkBuffer &dst, VkDeviceSize size);
+
+  void CreateAndFillDeviceLocalBuffer(VkBuffer& buf, VkDeviceMemory &mem, 
+                                      VkDeviceSize size, VkBufferUsageFlags usageFlags, 
+                                      std::function<void(void *, uint32_t)> fillerFunc);
+
+  void CleanupPipeline(pipeline_data_t &pipeline);
 };
 
 

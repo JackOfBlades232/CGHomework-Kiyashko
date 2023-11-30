@@ -17,6 +17,9 @@ typedef float4       vec4;
 typedef float3       vec3;
 typedef float2       vec2;
 typedef float4x4     mat4;
+typedef Box4f        box4;
+#else
+struct box4 { vec4 min, max; };
 #endif
 
 struct UniformParams
@@ -27,5 +30,7 @@ struct UniformParams
   vec3  baseColor;
   bool animateLightColor;
 };
+
+#define COMPUTE_GROUP_SIZE_X 256
 
 #endif //VK_GRAPHICS_BASIC_COMMON_H

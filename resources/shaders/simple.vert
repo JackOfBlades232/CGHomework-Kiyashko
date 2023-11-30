@@ -19,9 +19,12 @@ layout(location = 0) out VS_OUT
     vec3 wNorm;
 } vOut;
 
-layout(binding = 0, std430) buffer InstanceMatrices
-{
-    mat4 instMatrices[];
+layout(std430, binding = 0) readonly buffer InstanceData {
+    mat4 instanceMatrices[];
+};
+
+layout(std430, binding = 1) readonly buffer InstanceIndices {
+    uint markedInstIndices[];
 };
 
 out gl_PerVertex { vec4 gl_Position; };
@@ -32,7 +35,7 @@ void main(void)
     // @HACK
     mat4 mModel;
     if (params.mModel[3][3] != 1.0)
-        mModel = instMatrices[gl_InstanceIndex];
+        mModel = instanceMatrices[markedInstIndices[gl_InstanceIndex]];
     else
         mModel = params.mModel;
 

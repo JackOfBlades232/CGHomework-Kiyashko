@@ -753,18 +753,7 @@ void SimpleShadowmapRender::DrawFrame(float a_time, DrawMode a_mode)
 {
   UpdateUniformBuffer(a_time);
   UpdateIndirectCommand();
-  switch (a_mode)
-  {
-    case DrawMode::WITH_GUI:
-//      DrawFrameWithGUI();
-//      break;
-    case DrawMode::NO_GUI:
-      DrawFrameSimple();
-      break;
-    default:
-      DrawFrameSimple();
-  }
-
+  DrawFrameSimple();
 }
 
 void SimpleShadowmapRender::CreateAndAllocateBuffer(VkBuffer& buf, VkDeviceMemory& mem,

@@ -141,7 +141,8 @@ void SimpleShadowmapRender::CreateInstance()
 void SimpleShadowmapRender::CreateDevice(uint32_t a_deviceId)
 {
   SetupDeviceExtensions();
-  m_physicalDevice = vk_utils::findPhysicalDevice(m_instance, true, a_deviceId, m_deviceExtensions);
+  // @TODO: make these params not hardcoded (might not be done in this task)
+  m_physicalDevice = FindPhysicalDevice(m_instance, a_deviceId, VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU, 1, 2, m_deviceExtensions);
 
   SetupDeviceFeatures();
   m_device = vk_utils::createLogicalDevice(m_physicalDevice, m_validationLayers, m_deviceExtensions,
@@ -835,4 +836,87 @@ void SimpleShadowmapRender::CleanupPipeline(pipeline_data_t& pipeline)
     vkDestroyPipeline(m_device, pipeline.pipeline, nullptr);
     pipeline.pipeline = VK_NULL_HANDLE;
   }
+}
+
+VkPhysicalDevice SimpleShadowmapRender::FindPhysicalDevice(VkInstance instance,
+														   unsigned preferredDeviceId, VkPhysicalDeviceType preferredDeviceType,
+														   uint32_t deviceIdMatchWeight, uint32_t deviceTypeMatchWeight,
+														   std::vector<const char*> deviceExt)
+{
+  uint32_t deviceCount;
+  vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+  if (deviceCount == 0)
+  {
+    RUN_TIME_ERROR("vk_utils::findPhysicalDevice, no Vulkan devices found");
+  }
+
+  std::vector<VkPhysicalDevice> devices(deviceCount);
+  vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+  VkPhysicalDeviceProperties props;
+  VkPhysicalDeviceFeatures features;
+
+  uint32_t bestDeviceScore = 0;
+
+  for (size_t i = 0; i < devices.size(); i++)
+  {
+    uint32_t score = 0;
+
+    vkGetPhysicalDeviceProperties(devices[i], &props);
+    vkGetPhysicalDeviceFeatures(devices[i], &features);
+
+    std::string deviceDescription;
+    if (i == preferredDeviceId)
+      score += deviceIdMatchWeight;
+    if (props.deviceType == preferredDeviceType)
+      score += deviceTypeMatchWeight;
+
+    if (!CheckDeviceExtensionSupport(devices[i], deviceExt))
+      score = 0;
+
+    if (score > bestDeviceScore)
+    {
+      bestDeviceScore = score;
+      physicalDevice = devices[i];
+    }
+  }
+
+  // try to select some device if preferred was not selected
+  //
+  if (physicalDevice == VK_NULL_HANDLE)
+  {
+    for (size_t i = 0; i < devices.size(); ++i)
+    {
+      if (CheckDeviceExtensionSupport(devices[i], deviceExt))
+      {
+        physicalDevice = devices[i];
+        break;
+      }
+    }
+  }
+
+  if (physicalDevice == VK_NULL_HANDLE)
+    RUN_TIME_ERROR("vk_utils::findPhysicalDevice, no Vulkan devices supporting requested extensions were found");
+
+  return physicalDevice;
+}
+
+bool SimpleShadowmapRender::CheckDeviceExtensionSupport(VkPhysicalDevice device, std::vector<const char *> &requestedExtensions)
+{
+  uint32_t extensionCount;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+  std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+  std::set<std::string> requiredExtensions(requestedExtensions.begin(), requestedExtensions.end());
+
+  for (const auto &extension : availableExtensions)
+  {
+    requiredExtensions.erase(extension.extensionName);
+  }
+
+  return requiredExtensions.empty();
 }

@@ -222,6 +222,12 @@ private:
                                       std::function<void(void *, uint32_t)> fillerFunc);
 
   void CleanupPipeline(pipeline_data_t &pipeline);
+
+  VkPhysicalDevice FindPhysicalDevice(VkInstance instance, 
+									  unsigned preferredDeviceId, VkPhysicalDeviceType preferredDeviceType,
+									  uint32_t deviceIdMatchWeight, uint32_t deviceTypeMatchWeight,  
+									  std::vector<const char *> deviceExt);
+  bool CheckDeviceExtensionSupport(VkPhysicalDevice device, std::vector<const char *> &requestedExtensions);
 };
 
 

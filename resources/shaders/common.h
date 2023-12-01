@@ -31,6 +31,6 @@ struct UniformParams
   bool animateLightColor;
 };
 
-#define COMPUTE_GROUP_SIZE_X 256
+#define COMPUTE_GROUP_SIZE_X 32
 
 #endif //VK_GRAPHICS_BASIC_COMMON_H

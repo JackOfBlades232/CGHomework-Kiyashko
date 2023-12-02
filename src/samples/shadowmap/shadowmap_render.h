@@ -111,16 +111,19 @@ private:
   VkBuffer m_ssboInstanceIndices            = VK_NULL_HANDLE;
   VkDeviceMemory m_ssboInstanceIndicesAlloc = VK_NULL_HANDLE;
 
-  pipeline_data_t m_basicForwardPipeline {};
   pipeline_data_t m_shadowPipeline {};
   pipeline_data_t m_cullingPipeline {};
+  pipeline_data_t m_basicForwardPipeline {};
+  pipeline_data_t m_instancePipeline {};
 
   VkDescriptorSet m_shadowDS              = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_shadowDSLayout  = VK_NULL_HANDLE;
-  VkDescriptorSet m_dSet                  = VK_NULL_HANDLE;
-  VkDescriptorSetLayout m_dSetLayout      = VK_NULL_HANDLE;
   VkDescriptorSet m_cullingDS             = VK_NULL_HANDLE;
   VkDescriptorSetLayout m_cullingDSLayout = VK_NULL_HANDLE;
+  VkDescriptorSet m_dSet                  = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_dSetLayout      = VK_NULL_HANDLE;
+  VkDescriptorSet m_instDS                = VK_NULL_HANDLE;
+  VkDescriptorSetLayout m_instDSLayout    = VK_NULL_HANDLE;
   VkRenderPass m_screenRenderPass         = VK_NULL_HANDLE;// main renderpass
 
   std::shared_ptr<vk_utils::DescriptorMaker> m_pBindings = nullptr;
@@ -194,9 +197,13 @@ private:
   void CreateDevice(uint32_t a_deviceId);
 
   void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkFramebuffer a_frameBuff,
-                                VkImageView a_targetImageView, VkPipeline a_pipeline);
+                                VkImageView a_targetImageView);
 
-  void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void DrawFullSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void DrawMainSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void DrawInstancesCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+
+  void AddMainSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 
   void SetupSimplePipeline();
   void CleanupPipelineAndSwapchain();

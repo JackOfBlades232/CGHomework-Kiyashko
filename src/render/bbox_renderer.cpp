@@ -64,29 +64,31 @@ void BboxRenderer::Create(const char *vspath, const char *fspath, CreateInfo inf
       }
     });
 
+  // @TODO: somehow automate eTransferDst for buffers that will be updated with copy
   m_vertexBuffer = m_context->createBuffer(
     {
       .size = sizeof(s_boxVert),
-      .bufferUsage = vk::BufferUsageFlagBits::eVertexBuffer,
-      .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+      .bufferUsage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+      .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
       .name = "bbox_wireframe_vertices"
     });
   m_indexBuffer = m_context->createBuffer(
     {
       .size = sizeof(s_boxInd),
-      .bufferUsage = vk::BufferUsageFlagBits::eIndexBuffer,
-      .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+      .bufferUsage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+      .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
       .name = "bbox_wireframe_indices"
     });
 
-  // @TODO: reimpl with etna CopyHelper once it is implemented
-  memcpy(m_vertexBuffer.map(), s_boxVert, sizeof(s_boxVert));
-  memcpy(m_indexBuffer.map(), s_boxInd, sizeof(s_boxInd));
+  m_vertexBuffer.fillOnce((std::byte *)s_boxVert, sizeof(s_boxVert));
+  m_indexBuffer.fillOnce((std::byte *)s_boxInd, sizeof(s_boxInd));
 }
 
 void BboxRenderer::SetBoxes(const LiteMath::Box4f *boxes, size_t cnt)
 {
-  m_instances.resize(cnt);
+  bool needToResize = cnt != m_instances.size();
+  if (needToResize)
+    m_instances.resize(cnt);
   for (size_t i = 0; i < m_instances.size(); i++)
   {
     LiteMath::float4x4 &inst   = m_instances[i];
@@ -109,16 +111,22 @@ void BboxRenderer::SetBoxes(const LiteMath::Box4f *boxes, size_t cnt)
   if (m_drawInstanced)
   {
     size_t bufSize = sizeof(LiteMath::float4x4) * m_instances.size();
-
-    m_boxesInstBuffer = m_context->createBuffer(
-      {
-        .size = bufSize,
-        .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer,
-        .memoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-        .name = "bbox_wireframe_instances"
-      });
-
-    memcpy(m_boxesInstBuffer.map(), m_instances.data(), bufSize);
+    
+    if (needToResize)
+    {
+      m_boxesInstBuffer = m_context->createBuffer(
+        {
+          .size = bufSize,
+          .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+          .name = "bbox_wireframe_instances"
+        });
+      m_boxesInstBuffer.fill((std::byte *)m_instances.data(), bufSize);
+    }
+    else 
+    {
+      m_boxesInstBuffer.update((std::byte *)m_instances.data(), bufSize);
+    }
   }
 }
 

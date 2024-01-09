@@ -97,14 +97,7 @@ void SimpleShadowmapRender::PreparePipelines()
       .depthFormat   = vk::Format::eD32Sfloat
     }
   );
-
-  //m_pBbox->SetBoxes(*m_pScnMgr->GetInstanceBboxes());
-  // @TEST: non small buffer
-  const std::vector<LiteMath::Box4f> *boxes = m_pScnMgr->GetInstanceBboxes();
-  std::vector<LiteMath::Box4f> moreBoxes(boxes->size() * 50000);
-  for (int i = 0; i < 50000; i++)
-    memcpy(moreBoxes.data() + i * boxes->size(), boxes->data(), boxes->size() * sizeof(LiteMath::Box4f));
-  m_pBbox->SetBoxes(moreBoxes);
+  m_pBbox->SetBoxes(*m_pScnMgr->GetInstanceBboxes());
 
   SetupSimplePipeline();
 }

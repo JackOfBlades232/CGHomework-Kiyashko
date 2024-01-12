@@ -4,8 +4,6 @@
 // #define VK_NO_PROTOTYPES
 #include "../../render/compute_common.h"
 #include "../resources/shaders/common.h"
-#include <vk_descriptor_sets.h>
-#include <vk_copy.h>
 
 #include <etna/GlobalContext.hpp>
 #include <etna/ComputePipeline.hpp>
@@ -38,8 +36,6 @@ private:
   VkPhysicalDeviceFeatures m_enabledDeviceFeatures = {};
   std::vector<const char*> m_deviceExtensions      = {};
   std::vector<const char*> m_instanceExtensions    = {};
-
-  std::shared_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
   
   etna::ComputePipeline m_pipeline;
 

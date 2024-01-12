@@ -27,7 +27,7 @@ void SimpleCompute::Execute()
   VK_CHECK_RESULT(vkWaitForFences(m_context->getDevice(), 1, &m_fence, VK_TRUE, UINT64_MAX));
 
   std::vector<float> values(m_length);
-  m_pCopyHelper->ReadBuffer(m_sum.get(), 0, values.data(), sizeof(float) * values.size());
+  m_sum.readOnce((std::byte *)values.data(),  sizeof(float) * values.size());
 
   std::cout << std::endl;
   for (auto v: values) 

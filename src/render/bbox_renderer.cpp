@@ -3,6 +3,8 @@
 #include "etna/Etna.hpp"
 #include "etna/RenderTargetStates.hpp"
 
+#include <iostream>
+
 const LiteMath::float4 BboxRenderer::s_boxVert[8] =
 {
   {0.f, 0.f, 0.f, 1.f},
@@ -80,8 +82,8 @@ void BboxRenderer::Create(const char *vspath, const char *fspath, CreateInfo inf
       .name = "bbox_wireframe_indices"
     });
 
-  m_vertexBuffer.fillOnce((std::byte *)s_boxVert, sizeof(s_boxVert));
-  m_indexBuffer.fillOnce((std::byte *)s_boxInd, sizeof(s_boxInd));
+  m_vertexBuffer.updateOnce((std::byte *)s_boxVert, sizeof(s_boxVert));
+  m_indexBuffer.updateOnce((std::byte *)s_boxInd, sizeof(s_boxInd));
 }
 
 void BboxRenderer::SetBoxes(const LiteMath::Box4f *boxes, size_t cnt)
@@ -121,7 +123,8 @@ void BboxRenderer::SetBoxes(const LiteMath::Box4f *boxes, size_t cnt)
           .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
           .name = "bbox_wireframe_instances"
         });
-      m_boxesInstBuffer.fill((std::byte *)m_instances.data(), bufSize);
+      m_boxesInstBuffer.createStagingBuffer(etna::StagingBufferType::eBothWays);
+      m_boxesInstBuffer.update((std::byte *)m_instances.data(), bufSize);
     }
     else 
     {

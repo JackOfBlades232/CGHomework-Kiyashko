@@ -1,9 +1,5 @@
 #include "simple_compute.h"
 
-#include <vk_pipeline.h>
-#include <vk_buffers.h>
-#include <vk_utils.h>
-
 #include <etna/Etna.hpp>
 #include <vulkan/vulkan_core.h>
 
@@ -22,37 +18,32 @@ void SimpleCompute::SetupSimplePipeline()
       .size = sizeof(float) * m_length,
       .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
       .name = "m_A"
-    }
-  );
+    });
 
   m_B = m_context->createBuffer(etna::Buffer::CreateInfo
     {
       .size = sizeof(float) * m_length,
       .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
       .name = "m_B"
-    }
-  );
+    });
 
   m_sum = m_context->createBuffer(etna::Buffer::CreateInfo
     {
       .size = sizeof(float) * m_length,
       .bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
       .name = "m_sum"
-    }
-  );
+    });
   
   //// Filling the buffers
   // 
   std::vector<float> values(m_length);
-  for (uint32_t i = 0; i < values.size(); ++i) {
+  for (uint32_t i = 0; i < values.size(); ++i)
     values[i] = (float)i;
-  }
-  m_pCopyHelper->UpdateBuffer(m_A.get(), 0, values.data(), sizeof(float) * values.size());
+  m_A.updateOnce((std::byte *)values.data(), sizeof(float) * values.size());
 
-  for (uint32_t i = 0; i < values.size(); ++i) {
+  for (uint32_t i = 0; i < values.size(); ++i)
     values[i] = (float)i * i;
-  }
-  m_pCopyHelper->UpdateBuffer(m_B.get(), 0, values.data(), sizeof(float) * values.size());
+  m_B.updateOnce((std::byte *)values.data(), sizeof(float) * values.size());
 
   //// Compute pipeline creation
   auto &pipelineManager = etna::get_context().getPipelineManager();
@@ -90,8 +81,7 @@ void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeli
       etna::Binding {0, m_A.genBinding()},
       etna::Binding {1, m_B.genBinding()},
       etna::Binding {2, m_sum.genBinding()},
-    }
-  );
+    });
 
   VkDescriptorSet vkSet = set.getVkSet();
 

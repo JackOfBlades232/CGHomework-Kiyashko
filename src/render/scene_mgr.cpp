@@ -1,8 +1,7 @@
 #include <map>
 #include <array>
+#include <iostream>
 #include "scene_mgr.h"
-#include "vk_utils.h"
-#include "vk_buffers.h"
 #include "../loader_utils/hydraxml.h"
 
 
@@ -20,16 +19,10 @@ VkTransformMatrixKHR transformMatrixFromFloat4x4(const LiteMath::float4x4 &m)
   return transformMatrix;
 }
 
-SceneManager::SceneManager(VkDevice a_device, VkPhysicalDevice a_physDevice,
-  uint32_t a_transferQId, uint32_t a_graphicsQId, bool debug) : m_device(a_device), m_physDevice(a_physDevice),
-                 m_transferQId(a_transferQId), m_graphicsQId(a_graphicsQId), m_debug(debug)
+SceneManager::SceneManager(bool debug) : m_debug(debug)
 {
-  vkGetDeviceQueue(m_device, m_transferQId, 0, &m_transferQ);
-  vkGetDeviceQueue(m_device, m_graphicsQId, 0, &m_graphicsQ);
-  VkDeviceSize scratchMemSize = 64 * 1024 * 1024;
-  m_pCopyHelper = std::make_shared<vk_utils::PingPongCopyHelper>(m_physDevice, m_device, m_transferQ, m_transferQId, scratchMemSize);
-  m_pMeshData   = std::make_shared<Mesh8F>();
-
+  m_context = &etna::get_context();
+  m_pMeshData = std::make_shared<Mesh8F>();
 }
 
 bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
@@ -39,7 +32,7 @@ bool SceneManager::LoadSceneXML(const std::string &scenePath, bool transpose)
 
   if(res < 0)
   {
-    RUN_TIME_ERROR("LoadSceneXML error");
+    ETNA_PANIC("LoadSceneXML error");
     return false;
   }
 
@@ -71,9 +64,8 @@ hydra_xml::Camera SceneManager::GetCamera(uint32_t camId) const
 {
   if(camId >= m_sceneCameras.size())
   {
-    std::stringstream ss;
-    ss << "[SceneManager::GetCamera] camera with id = " << camId << " was not loaded, using default camera.";
-    vk_utils::logWarning(ss.str());
+    // @TODO: better logging?
+    std::cerr << "[SceneManager::GetCamera] camera with id = " << camId << " was not loaded, using default camera.";
 
     hydra_xml::Camera res = {};
     res.fov = 60;
@@ -101,28 +93,26 @@ void SceneManager::LoadSingleTriangle()
   std::vector<uint32_t> indices = { 0, 1, 2 };
   m_totalIndices = static_cast<uint32_t>(indices.size());
 
-  VkDeviceSize vertexBufSize = sizeof(Vertex) * vertices.size();
-  VkDeviceSize indexBufSize  = sizeof(uint32_t) * indices.size();
+  vk::DeviceSize vertexBufSize = sizeof(Vertex) * vertices.size();
+  vk::DeviceSize indexBufSize  = sizeof(uint32_t) * indices.size();
   
-  VkMemoryRequirements vertMemReq, idxMemReq; 
-  m_geoVertBuf = vk_utils::createBuffer(m_device, vertexBufSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, &vertMemReq);
-  m_geoIdxBuf  = vk_utils::createBuffer(m_device, indexBufSize,  VK_BUFFER_USAGE_INDEX_BUFFER_BIT  | VK_BUFFER_USAGE_TRANSFER_DST_BIT, &idxMemReq);
-
-  size_t pad = vk_utils::getPaddedSize(vertMemReq.size, idxMemReq.alignment);
-
-  VkMemoryAllocateInfo allocateInfo = {};
-  allocateInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocateInfo.pNext           = nullptr;
-  allocateInfo.allocationSize  = pad + idxMemReq.size;
-  allocateInfo.memoryTypeIndex = vk_utils::findMemoryType(vertMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_physDevice);
-
-
-  VK_CHECK_RESULT(vkAllocateMemory(m_device, &allocateInfo, nullptr, &m_geoMemAlloc));
-
-  VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_geoVertBuf, m_geoMemAlloc, 0));
-  VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_geoIdxBuf,  m_geoMemAlloc, pad));
-  m_pCopyHelper->UpdateBuffer(m_geoVertBuf, 0, vertices.data(),  vertexBufSize);
-  m_pCopyHelper->UpdateBuffer(m_geoIdxBuf,  0, indices.data(), indexBufSize);
+  m_geoVertBuf =  m_context->createBuffer(etna::Buffer::CreateInfo
+  {
+    .size = vertexBufSize,
+    .bufferUsage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+    .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .name = "scene_vertex_buffer"
+  });
+  m_geoIdxBuf   =  m_context->createBuffer(etna::Buffer::CreateInfo
+  {
+    .size = indexBufSize,
+    .bufferUsage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+    .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .name = "scene_index_buffer"
+  });
+  
+  m_geoVertBuf.updateOnce((std::byte *)vertices.data(), vertexBufSize);
+  m_geoIdxBuf.updateOnce((std::byte *)indices.data(), indexBufSize);
 }
 
 
@@ -132,8 +122,8 @@ uint32_t SceneManager::AddMeshFromFile(const std::string& meshPath)
   //@TODO: other file formats
   auto data = cmesh::LoadMeshFromVSGF(meshPath.c_str());
 
-  if(data.VerticesNum() == 0)
-    RUN_TIME_ERROR(("can't load mesh at " + meshPath).c_str());
+  if (data.VerticesNum() == 0)
+    ETNA_PANIC("can't load mesh at %s", meshPath.c_str());
 
   return AddMeshFromData(data);
 }
@@ -213,17 +203,31 @@ void SceneManager::UnmarkInstance(const uint32_t instId)
 
 void SceneManager::LoadGeoDataOnGPU()
 {
-  VkDeviceSize vertexBufSize = m_pMeshData->VertexDataSize();
-  VkDeviceSize indexBufSize  = m_pMeshData->IndexDataSize();
-  VkDeviceSize infoBufSize   = m_meshInfos.size() * sizeof(uint32_t) * 2;
-
-  m_geoVertBuf  = vk_utils::createBuffer(m_device, vertexBufSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  m_geoIdxBuf   = vk_utils::createBuffer(m_device, indexBufSize,  VK_BUFFER_USAGE_INDEX_BUFFER_BIT  | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  m_meshInfoBuf = vk_utils::createBuffer(m_device, infoBufSize,   VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-
-  VkMemoryAllocateFlags allocFlags {};
-
-  m_geoMemAlloc = vk_utils::allocateAndBindWithPadding(m_device, m_physDevice, {m_geoVertBuf, m_geoIdxBuf, m_meshInfoBuf}, allocFlags);
+  vk::DeviceSize vertexBufSize = m_pMeshData->VertexDataSize();
+  vk::DeviceSize indexBufSize  = m_pMeshData->IndexDataSize();
+  vk::DeviceSize infoBufSize   = m_meshInfos.size() * sizeof(uint32_t) * 2;
+  
+  m_geoVertBuf =  m_context->createBuffer(etna::Buffer::CreateInfo
+  {
+    .size = vertexBufSize,
+    .bufferUsage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+    .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .name = "scene_vertex_buffer"
+  });
+  m_geoIdxBuf = m_context->createBuffer(etna::Buffer::CreateInfo
+  {
+    .size = indexBufSize,
+    .bufferUsage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+    .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .name = "scene_index_buffer"
+  });
+  m_meshInfoBuf = m_context->createBuffer(etna::Buffer::CreateInfo
+  {
+    .size = infoBufSize,
+    .bufferUsage = vk::BufferUsageFlagBits::eTransferDst,
+    .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+    .name = "scene_info_buffer"
+  });
 
   std::vector<LiteMath::uint2> mesh_info_tmp;
   for(const auto& m : m_meshInfos)
@@ -231,10 +235,10 @@ void SceneManager::LoadGeoDataOnGPU()
     mesh_info_tmp.emplace_back(m.m_indexOffset, m.m_vertexOffset);
   }
 
-  m_pCopyHelper->UpdateBuffer(m_geoVertBuf, 0, m_pMeshData->VertexData(), vertexBufSize);
-  m_pCopyHelper->UpdateBuffer(m_geoIdxBuf,  0, m_pMeshData->IndexData(), indexBufSize);
-  if(!mesh_info_tmp.empty())
-    m_pCopyHelper->UpdateBuffer(m_meshInfoBuf,  0, mesh_info_tmp.data(), mesh_info_tmp.size() * sizeof(mesh_info_tmp[0]));
+  m_geoVertBuf.updateOnce((std::byte *)m_pMeshData->VertexData(), vertexBufSize);
+  m_geoIdxBuf.updateOnce((std::byte *)m_pMeshData->IndexData(), indexBufSize);
+  if (!mesh_info_tmp.empty())
+    m_meshInfoBuf.updateOnce((std::byte *)mesh_info_tmp.data(), mesh_info_tmp.size() * sizeof(mesh_info_tmp[0]));
 }
 
 void SceneManager::DrawMarkedInstances()
@@ -244,37 +248,10 @@ void SceneManager::DrawMarkedInstances()
 
 void SceneManager::DestroyScene()
 {
-  if(m_geoVertBuf != VK_NULL_HANDLE)
-  {
-    vkDestroyBuffer(m_device, m_geoVertBuf, nullptr);
-    m_geoVertBuf = VK_NULL_HANDLE;
-  }
-
-  if(m_geoIdxBuf != VK_NULL_HANDLE)
-  {
-    vkDestroyBuffer(m_device, m_geoIdxBuf, nullptr);
-    m_geoIdxBuf = VK_NULL_HANDLE;
-  }
-
-  if(m_meshInfoBuf != VK_NULL_HANDLE)
-  {
-    vkDestroyBuffer(m_device, m_meshInfoBuf, nullptr);
-    m_meshInfoBuf = VK_NULL_HANDLE;
-  }
-
-  if(m_instanceMatricesBuffer != VK_NULL_HANDLE)
-  {
-    vkDestroyBuffer(m_device, m_instanceMatricesBuffer, nullptr);
-    m_instanceMatricesBuffer = VK_NULL_HANDLE;
-  }
-
-  if(m_geoMemAlloc != VK_NULL_HANDLE)
-  {
-    vkFreeMemory(m_device, m_geoMemAlloc, nullptr);
-    m_geoMemAlloc = VK_NULL_HANDLE;
-  }
-
-  m_pCopyHelper = nullptr;
+  m_geoVertBuf.reset();
+  m_geoIdxBuf.reset();
+  m_meshInfoBuf.reset();
+  m_instanceMatricesBuffer.reset();
 
   m_meshInfos.clear();
   m_pMeshData = nullptr;

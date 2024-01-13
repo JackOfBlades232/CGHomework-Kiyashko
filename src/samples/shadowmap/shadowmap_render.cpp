@@ -153,8 +153,8 @@ void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4
   VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT);
 
   VkDeviceSize zero_offset = 0u;
-  VkBuffer vertexBuf = m_pScnMgr->GetVertexBuffer();
-  VkBuffer indexBuf  = m_pScnMgr->GetIndexBuffer();
+  VkBuffer vertexBuf = m_pScnMgr->GetVertexBuffer().get();
+  VkBuffer indexBuf  = m_pScnMgr->GetIndexBuffer().get();
   
   vkCmdBindVertexBuffers(a_cmdBuff, 0, 1, &vertexBuf, &zero_offset);
   vkCmdBindIndexBuffer(a_cmdBuff, indexBuf, 0, VK_INDEX_TYPE_UINT32);

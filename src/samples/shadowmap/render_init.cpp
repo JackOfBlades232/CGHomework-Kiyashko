@@ -39,9 +39,7 @@ void SimpleShadowmapRender::InitVulkan(const char** a_instanceExtensions, uint32
   
   m_context = &etna::get_context();
 
-  m_pScnMgr = std::make_shared<SceneManager>(
-    m_context->getDevice(), m_context->getPhysicalDevice(),
-    m_context->getQueueFamilyIdx(), m_context->getQueueFamilyIdx(), false);
+  m_pScnMgr = std::make_shared<SceneManager>(false);
 }
 
 void SimpleShadowmapRender::SetupDeviceExtensions()

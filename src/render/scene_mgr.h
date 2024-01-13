@@ -5,8 +5,9 @@
 
 #include <geom/vk_mesh.h>
 #include "LiteMath.h"
-#include <vk_copy.h>
 #include <etna/VertexInput.hpp>
+#include <etna/Buffer.hpp>
+#include <etna/GlobalContext.hpp>
 
 #include "../loader_utils/hydraxml.h"
 #include "../resources/shaders/common.h"
@@ -21,8 +22,7 @@ struct InstanceInfo
 
 struct SceneManager
 {
-  SceneManager(VkDevice a_device, VkPhysicalDevice a_physDevice, uint32_t a_transferQId, uint32_t a_graphicsQId,
-    bool debug = false);
+  SceneManager(bool debug = false);
   ~SceneManager() { DestroyScene(); }
 
   bool LoadSceneXML(const std::string &scenePath, bool transpose = true);
@@ -42,10 +42,9 @@ struct SceneManager
 
   etna::VertexByteStreamFormatDescription GetVertexStreamDescription();
 
-  VkBuffer GetVertexBuffer() const { return m_geoVertBuf; }
-  VkBuffer GetIndexBuffer()  const { return m_geoIdxBuf; }
-  VkBuffer GetMeshInfoBuffer()  const { return m_meshInfoBuf; }
-  std::shared_ptr<vk_utils::ICopyEngine> GetCopyHelper() { return  m_pCopyHelper; }
+  const etna::Buffer &GetVertexBuffer()   const { return m_geoVertBuf; }
+  const etna::Buffer &GetIndexBuffer()    const { return m_geoIdxBuf; }
+  const etna::Buffer &GetMeshInfoBuffer() const { return m_meshInfoBuf; }
 
   uint32_t MeshesNum() const {return (uint32_t)m_meshInfos.size();}
   uint32_t InstancesNum() const {return (uint32_t)m_instanceInfos.size();}
@@ -76,20 +75,12 @@ private:
   uint32_t m_totalVertices = 0u;
   uint32_t m_totalIndices  = 0u;
 
-  VkBuffer m_geoVertBuf = VK_NULL_HANDLE;
-  VkBuffer m_geoIdxBuf  = VK_NULL_HANDLE;
-  VkBuffer m_meshInfoBuf  = VK_NULL_HANDLE;
-  VkBuffer m_instanceMatricesBuffer = VK_NULL_HANDLE;
-  VkDeviceMemory m_geoMemAlloc = VK_NULL_HANDLE;
+  etna::GlobalContext *m_context{};
 
-  VkDevice m_device = VK_NULL_HANDLE;
-  VkPhysicalDevice m_physDevice = VK_NULL_HANDLE;
-  uint32_t m_transferQId = UINT32_MAX;
-  VkQueue m_transferQ = VK_NULL_HANDLE;
-
-  uint32_t m_graphicsQId = UINT32_MAX;
-  VkQueue m_graphicsQ = VK_NULL_HANDLE;
-  std::shared_ptr<vk_utils::ICopyEngine> m_pCopyHelper;
+  etna::Buffer m_geoVertBuf{};
+  etna::Buffer m_geoIdxBuf{};
+  etna::Buffer m_meshInfoBuf{};
+  etna::Buffer m_instanceMatricesBuffer{};
 
   bool m_debug = false;
   // for debugging

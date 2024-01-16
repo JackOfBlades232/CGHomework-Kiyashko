@@ -61,16 +61,14 @@ void SimpleCompute::CleanupPipeline()
   vkDestroyFence(m_context->getDevice(), m_fence, nullptr);
 }
 
-void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeline a_pipeline)
+void SimpleCompute::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Pipeline a_pipeline)
 {
   vkResetCommandBuffer(a_cmdBuff, 0);
 
-  VkCommandBufferBeginInfo beginInfo = {};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
+  vk::CommandBufferBeginInfo beginInfo = { .flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse };
   // Filling the command buffer
-  VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
+  // @TODO: error checks everywhere
+  a_cmdBuff.begin(beginInfo);
 
   auto simpleComputeInfo = etna::get_shader_program("simple_compute");
 
@@ -83,14 +81,14 @@ void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeli
 
   VkDescriptorSet vkSet = set.getVkSet();
 
-  vkCmdBindPipeline      (a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline.getVkPipeline());
-  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, NULL);
+  a_cmdBuff.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline.getVkPipeline());
+  a_cmdBuff.bindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipeline.getVkPipelineLayout(), 0, {vkSet}, {});
 
-  vkCmdPushConstants(a_cmdBuff, m_pipeline.getVkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(m_length), &m_length);
+  a_cmdBuff.pushConstants(m_pipeline.getVkPipelineLayout(), vk::ShaderStageFlagBits::eCompute, 0, sizeof(m_length), &m_length);
 
   etna::flush_barriers(a_cmdBuff);
 
-  vkCmdDispatch(a_cmdBuff, 1, 1, 1);
+  a_cmdBuff.dispatch(1, 1, 1);
 
-  VK_CHECK_RESULT(vkEndCommandBuffer(a_cmdBuff));
+  a_cmdBuff.end();
 }

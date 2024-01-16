@@ -10,21 +10,23 @@ void SimpleCompute::Execute()
 
   BuildCommandBufferSimple(m_cmdBufferCompute, nullptr);
 
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &m_cmdBufferCompute;
+  vk::Device device = m_context->getDevice();
+  vk::Queue queue = m_context->getQueue();
 
-  VkFenceCreateInfo fenceCreateInfo = {};
-  fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  fenceCreateInfo.flags = 0;
-  VK_CHECK_RESULT(vkCreateFence(m_context->getDevice(), &fenceCreateInfo, NULL, &m_fence));
+  // @TODO: check all results
+  m_fence = device.createFence({}).value;
 
+  vk::SubmitInfo submitInfo = 
+  {
+    .commandBufferCount = 1,
+    .pCommandBuffers    = &m_cmdBufferCompute
+  };
+  
   // Submit the command buffer for execution
-  VK_CHECK_RESULT(vkQueueSubmit(m_context->getQueue(), 1, &submitInfo, m_fence));
+  queue.submit({submitInfo}, m_fence);
 
   // And wait for the execution to be completed
-  VK_CHECK_RESULT(vkWaitForFences(m_context->getDevice(), 1, &m_fence, VK_TRUE, UINT64_MAX));
+  device.waitForFences({m_fence}, true, UINT64_MAX);
 
   std::vector<float> values(m_length);
   m_sum.readOnce((std::byte *)values.data(),  sizeof(float) * values.size());

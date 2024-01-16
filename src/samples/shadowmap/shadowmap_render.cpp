@@ -145,46 +145,44 @@ void SimpleShadowmapRender::DestroyPipelines()
 
 /// COMMAND BUFFER FILLING
 
-void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout)
+void SimpleShadowmapRender::DrawSceneCmd(vk::CommandBuffer a_cmdBuff, const float4x4& a_wvp, vk::PipelineLayout a_pipelineLayout)
 {
-  VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT);
+  vk::ShaderStageFlags stageFlags = vk::ShaderStageFlagBits::eVertex;
 
-  VkDeviceSize zero_offset = 0u;
-  VkBuffer vertexBuf = m_pScnMgr->GetVertexBuffer().get();
-  VkBuffer indexBuf  = m_pScnMgr->GetIndexBuffer().get();
+  vk::DeviceSize zeroOffset = 0u;
+  vk::Buffer vertexBuf = m_pScnMgr->GetVertexBuffer().get();
+  vk::Buffer indexBuf  = m_pScnMgr->GetIndexBuffer().get();
   
-  vkCmdBindVertexBuffers(a_cmdBuff, 0, 1, &vertexBuf, &zero_offset);
-  vkCmdBindIndexBuffer(a_cmdBuff, indexBuf, 0, VK_INDEX_TYPE_UINT32);
+  a_cmdBuff.bindVertexBuffers(0, {vertexBuf}, {zeroOffset});
+  a_cmdBuff.bindIndexBuffer(indexBuf, 0, vk::IndexType::eUint32);
 
   pushConst2M.projView = a_wvp;
   for (uint32_t i = 0; i < m_pScnMgr->InstancesNum(); ++i)
   {
     auto inst         = m_pScnMgr->GetInstanceInfo(i);
     pushConst2M.model = m_pScnMgr->GetInstanceMatrix(i);
-    vkCmdPushConstants(a_cmdBuff, a_pipelineLayout,
-      stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
+    a_cmdBuff.pushConstants(a_pipelineLayout, stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
 
     auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
-    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
+    a_cmdBuff.drawIndexed(mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
   }
 }
 
-void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
+void SimpleShadowmapRender::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Image a_targetImage, vk::ImageView a_targetImageView)
 {
   vkResetCommandBuffer(a_cmdBuff, 0);
 
-  VkCommandBufferBeginInfo beginInfo = {};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+  vk::CommandBufferBeginInfo beginInfo = { .flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse };
 
-  VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
+  // @TODO: error checks in all function
+  a_cmdBuff.begin(beginInfo);
 
   //// draw scene to shadowmap
   //
   {
     etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, 2048, 2048}, {}, shadowMap);
 
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowPipeline.getVkPipeline());
+    a_cmdBuff.bindPipeline(vk::PipelineBindPoint::eGraphics, m_shadowPipeline.getVkPipeline());
     DrawSceneCmd(a_cmdBuff, m_lightMatrix, m_shadowPipeline.getVkPipelineLayout());
   }
 
@@ -199,13 +197,12 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
       etna::Binding {1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
     });
 
-    VkDescriptorSet vkSet = set.getVkSet();
+    vk::DescriptorSet vkSet = set.getVkSet();
 
     etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, m_width, m_height}, {{a_targetImage, a_targetImageView}}, mainViewDepth);
 
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_basicForwardPipeline.getVkPipeline());
-    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      m_basicForwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+    a_cmdBuff.bindPipeline(vk::PipelineBindPoint::eGraphics, m_basicForwardPipeline.getVkPipeline());
+    a_cmdBuff.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_basicForwardPipeline.getVkPipelineLayout(), 0, { vkSet }, {});
 
     DrawSceneCmd(a_cmdBuff, m_worldViewProj, m_basicForwardPipeline.getVkPipelineLayout());
   }
@@ -222,5 +219,5 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
   etna::finish_frame(a_cmdBuff);
 
-  VK_CHECK_RESULT(vkEndCommandBuffer(a_cmdBuff));
+  a_cmdBuff.end();
 }

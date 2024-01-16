@@ -56,8 +56,9 @@ void SimpleShadowmapRender::RecreateSwapChain()
   ResetPresentStuff();
 
   auto oldImgNum = m_swapchain.GetImageCount();
+  // @TODO: fix once swapchain remade
   m_presentationResources.queue = m_swapchain.CreateSwapChain(
-    m_context->getPhysicalDevice(), m_context->getDevice(), m_surface, m_width, m_height,
+    m_context->getPhysicalDevice(), m_context->getDevice(), *(VkSurfaceKHR *)&m_surface, m_width, m_height,
          oldImgNum, m_vsync);
 
   InitPresentStuff();

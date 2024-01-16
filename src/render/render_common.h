@@ -2,7 +2,6 @@
 #define CHIMERA_RENDER_COMMON_H
 
 #include <etna/Vulkan.hpp>
-#include "vk_utils.h"
 #include "utils/Camera.h"
 #include <cstring>
 #include <memory>
@@ -24,8 +23,8 @@ struct AppInput
 
 struct pipeline_data_t
 {
-  VkPipelineLayout layout;
-  VkPipeline pipeline;
+  vk::PipelineLayout layout;
+  vk::Pipeline pipeline;
 };
 
 enum class DrawMode
@@ -39,10 +38,10 @@ class IRender
 public:
   virtual uint32_t     GetWidth() const = 0;
   virtual uint32_t     GetHeight() const = 0;
-  virtual VkInstance   GetVkInstance() const = 0;
+  virtual vk::Instance GetVkInstance() const = 0;
 
   virtual void InitVulkan(const char** a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId) = 0;
-  virtual void InitPresentation(VkSurfaceKHR& a_surface, bool initGUI) = 0;
+  virtual void InitPresentation(vk::SurfaceKHR& a_surface, bool initGUI) = 0;
   virtual void ProcessInput(const AppInput& input) = 0;
   virtual void UpdateCamera(const Camera* cams, uint32_t a_camsCount) = 0;
   virtual Camera GetCurrentCamera() { return { };};

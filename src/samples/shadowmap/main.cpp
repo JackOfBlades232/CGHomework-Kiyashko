@@ -17,8 +17,9 @@ void initVulkanGLFW(std::shared_ptr<IRender> &app, GLFWwindow* window)
 
   if(glfwExtensions != nullptr)
   {
-    VkSurfaceKHR surface;
-    VK_CHECK_RESULT(glfwCreateWindowSurface(app->GetVkInstance(), window, nullptr, &surface));
+    vk::SurfaceKHR surface;
+    // @TODO: can this be done better?
+    ETNA_VK_ASSERT(glfwCreateWindowSurface(app->GetVkInstance(), window, nullptr, (VkSurfaceKHR *)&surface));
     setupImGuiContext(window);
     app->InitPresentation(surface, false);
   }

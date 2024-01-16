@@ -30,11 +30,11 @@ public:
 
   uint32_t     GetWidth()      const override { return m_width; }
   uint32_t     GetHeight()     const override { return m_height; }
-  VkInstance   GetVkInstance() const override { return m_context->getInstance(); }
+  vk::Instance GetVkInstance() const override { return m_context->getInstance(); }
 
   void InitVulkan(const char** a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId) override;
 
-  void InitPresentation(VkSurfaceKHR &a_surface, bool initGUI) override;
+  void InitPresentation(vk::SurfaceKHR &a_surface, bool initGUI) override;
 
   void ProcessInput(const AppInput& input) override;
   void UpdateCamera(const Camera* cams, uint32_t a_camsNumber) override;
@@ -54,13 +54,13 @@ private:
   struct
   {
     uint32_t    currentFrame      = 0u;
-    VkQueue     queue             = VK_NULL_HANDLE;
-    VkSemaphore imageAvailable    = VK_NULL_HANDLE;
-    VkSemaphore renderingFinished = VK_NULL_HANDLE;
+    vk::Queue     queue             = VK_NULL_HANDLE;
+    vk::Semaphore imageAvailable    = VK_NULL_HANDLE;
+    vk::Semaphore renderingFinished = VK_NULL_HANDLE;
   } m_presentationResources;
 
-  std::vector<VkFence> m_frameFences;
-  std::vector<VkCommandBuffer> m_cmdBuffersDrawMain;
+  std::vector<vk::Fence> m_frameFences;
+  std::vector<vk::CommandBuffer> m_cmdBuffersDrawMain;
 
   struct
   {
@@ -77,7 +77,7 @@ private:
   etna::GraphicsPipeline m_basicForwardPipeline {};
   etna::GraphicsPipeline m_shadowPipeline {};
   
-  VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+  vk::SurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain; // @TODO: this is a harder to remake, but me is hard too
 
   Camera   m_cam;
@@ -127,12 +127,9 @@ private:
  
   void DrawFrameSimple(bool draw_gui);
 
-  void CreateInstance();
-  void CreateDevice(uint32_t a_deviceId);
+  void BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Image a_targetImage, vk::ImageView a_targetImageView);
 
-  void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
-
-  void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
+  void DrawSceneCmd(vk::CommandBuffer a_cmdBuff, const float4x4& a_wvp, vk::PipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
 
   void loadShaders();
 
@@ -153,9 +150,6 @@ private:
   void InitPresentStuff();
   void ResetPresentStuff();
   void SetupGUIElements();
-
-  std::vector<VkCommandBuffer> createCommandBuffers(uint32_t cnt);
-  void freeCommandBuffers(std::vector<VkCommandBuffer> &buffers);
 };
 
 

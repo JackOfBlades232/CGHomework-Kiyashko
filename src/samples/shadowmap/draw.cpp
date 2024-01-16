@@ -7,20 +7,21 @@
 
 void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
 {
-  vkWaitForFences(m_context->getDevice(), 1, &m_frameFences[m_presentationResources.currentFrame], VK_TRUE, UINT64_MAX);
-  vkResetFences(m_context->getDevice(), 1, &m_frameFences[m_presentationResources.currentFrame]);
+  vk::Device device = m_context->getDevice();
+  device.waitForFences({ m_frameFences[m_presentationResources.currentFrame] }, VK_TRUE, UINT64_MAX);
+  device.resetFences({ m_frameFences[m_presentationResources.currentFrame] });
 
   uint32_t imageIdx;
   m_swapchain.AcquireNextImage(m_presentationResources.imageAvailable, &imageIdx);
 
   auto currentCmdBuf = m_cmdBuffersDrawMain[m_presentationResources.currentFrame];
 
-  VkSemaphore waitSemaphores[] = {m_presentationResources.imageAvailable};
-  VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+  vk::Semaphore waitSemaphores[] = {m_presentationResources.imageAvailable};
+  vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
   BuildCommandBufferSimple(currentCmdBuf, m_swapchain.GetAttachment(imageIdx).image, m_swapchain.GetAttachment(imageIdx).view);
 
-  std::vector<VkCommandBuffer> submitCmdBufs = { currentCmdBuf };
+  std::vector<vk::CommandBuffer> submitCmdBufs = { currentCmdBuf };
 
   if (draw_gui)
   {
@@ -29,37 +30,38 @@ void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
     submitCmdBufs.push_back(currentGUICmdBuf);
   }
 
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = waitSemaphores;
-  submitInfo.pWaitDstStageMask = waitStages;
-  submitInfo.commandBufferCount = submitCmdBufs.size();
-  submitInfo.pCommandBuffers = submitCmdBufs.data();
+  vk::Semaphore signalSemaphores[] = {m_presentationResources.renderingFinished};
+  vk::SubmitInfo submitInfo = 
+  {
+    .waitSemaphoreCount   = 1,
+    .pWaitSemaphores      = waitSemaphores,
+    .pWaitDstStageMask    = waitStages,
+    .commandBufferCount   = (uint32_t)submitCmdBufs.size(),
+    .pCommandBuffers      = submitCmdBufs.data(),
+    .signalSemaphoreCount = 1,
+    .pSignalSemaphores    = signalSemaphores
+  };
 
-  VkSemaphore signalSemaphores[] = {m_presentationResources.renderingFinished};
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = signalSemaphores;
+  vk::Queue queue = m_context->getQueue();
+  // @TODO: check result hpp-style
+  queue.submit({ submitInfo });
 
-  VK_CHECK_RESULT(vkQueueSubmit(m_context->getQueue(),
-    1, &submitInfo, m_frameFences[m_presentationResources.currentFrame]));
+  // @TODO: all the rest shall be remade
+  vk::Result presentRes = (vk::Result)m_swapchain.QueuePresent(m_presentationResources.queue, imageIdx,
+                                                               m_presentationResources.renderingFinished);
 
-  VkResult presentRes = m_swapchain.QueuePresent(m_presentationResources.queue, imageIdx,
-                                                 m_presentationResources.renderingFinished);
-
-  if (presentRes == VK_ERROR_OUT_OF_DATE_KHR || presentRes == VK_SUBOPTIMAL_KHR)
+  if (presentRes == vk::Result::eErrorOutOfDateKHR || presentRes == vk::Result::eSuboptimalKHR)
   {
     RecreateSwapChain();
   }
-  else if (presentRes != VK_SUCCESS)
+  else if (presentRes != vk::Result::eSuccess)
   {
-    RUN_TIME_ERROR("Failed to present swapchain image");
+    ETNA_PANIC("Failed to present swapchain image");
   }
 
   m_presentationResources.currentFrame = (m_presentationResources.currentFrame + 1) % m_framesInFlight;
 
-  vkQueueWaitIdle(m_presentationResources.queue);
-  
+  m_presentationResources.queue.waitIdle();
   etna::submit();
 }
 

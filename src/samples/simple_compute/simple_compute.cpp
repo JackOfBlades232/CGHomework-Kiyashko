@@ -53,9 +53,7 @@ void SimpleCompute::SetupSimplePipeline()
 void SimpleCompute::CleanupPipeline()
 { 
   if (m_cmdBufferCompute)
-  {
-    vkFreeCommandBuffers(m_context->getDevice(), m_commandPool, 1, &m_cmdBufferCompute);
-  }
+    m_context->freeCommandBuffer(m_cmdBufferCompute);
 
   m_A.reset();
   m_B.reset();
@@ -63,7 +61,7 @@ void SimpleCompute::CleanupPipeline()
   vkDestroyFence(m_context->getDevice(), m_fence, nullptr);
 }
 
-void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeline)
+void SimpleCompute::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkPipeline a_pipeline)
 {
   vkResetCommandBuffer(a_cmdBuff, 0);
 

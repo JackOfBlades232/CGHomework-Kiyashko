@@ -51,8 +51,6 @@ private:
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
-  VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
-
   struct
   {
     uint32_t    currentFrame      = 0u;
@@ -80,7 +78,7 @@ private:
   etna::GraphicsPipeline m_shadowPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
-  VulkanSwapChain m_swapchain;
+  VulkanSwapChain m_swapchain; // @TODO: this is a harder to remake, but me is hard too
 
   Camera   m_cam;
   uint32_t m_width  = 1024u;
@@ -155,6 +153,9 @@ private:
   void InitPresentStuff();
   void ResetPresentStuff();
   void SetupGUIElements();
+
+  std::vector<VkCommandBuffer> createCommandBuffers(uint32_t cnt);
+  void freeCommandBuffers(std::vector<VkCommandBuffer> &buffers);
 };
 
 

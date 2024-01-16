@@ -9,11 +9,8 @@ void SimpleShadowmapRender::InitPresentStuff()
   VK_CHECK_RESULT(vkCreateSemaphore(m_context->getDevice(), &semaphoreInfo, nullptr, &m_presentationResources.imageAvailable));
   VK_CHECK_RESULT(vkCreateSemaphore(m_context->getDevice(), &semaphoreInfo, nullptr, &m_presentationResources.renderingFinished));
 
-  // TODO: Move to customizable initialization
-  m_commandPool = vk_utils::createCommandPool(m_context->getDevice(), m_context->getQueueFamilyIdx(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
   m_cmdBuffersDrawMain.reserve(m_framesInFlight);
-  m_cmdBuffersDrawMain = vk_utils::createCommandBuffers(m_context->getDevice(), m_commandPool, m_framesInFlight);
+  m_cmdBuffersDrawMain = createCommandBuffers(m_framesInFlight);
 
   m_frameFences.resize(m_framesInFlight);
   VkFenceCreateInfo fenceInfo = {};
@@ -37,8 +34,7 @@ void SimpleShadowmapRender::ResetPresentStuff()
 {
   if (!m_cmdBuffersDrawMain.empty())
   {
-    vkFreeCommandBuffers(m_context->getDevice(), m_commandPool, static_cast<uint32_t>(m_cmdBuffersDrawMain.size()),
-                         m_cmdBuffersDrawMain.data());
+    freeCommandBuffers(m_cmdBuffersDrawMain);
     m_cmdBuffersDrawMain.clear();
   }
 
@@ -55,11 +51,6 @@ void SimpleShadowmapRender::ResetPresentStuff()
   {
     vkDestroySemaphore(m_context->getDevice(), m_presentationResources.renderingFinished, nullptr);
   }
-
-  if (m_commandPool != VK_NULL_HANDLE)
-  {
-    vkDestroyCommandPool(m_context->getDevice(), m_commandPool, nullptr);
-  }
 }
 
 void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface, bool)
@@ -73,4 +64,21 @@ void SimpleShadowmapRender::InitPresentation(VkSurfaceKHR &a_surface, bool)
 
   AllocateResources();
   InitPresentStuff();
+}
+
+std::vector<VkCommandBuffer> SimpleShadowmapRender::createCommandBuffers(uint32_t cnt)
+{
+  std::vector<vk::CommandBuffer> buffers = m_context->createCommandBuffers(cnt);
+  std::vector<VkCommandBuffer> result(buffers.size());
+  for (size_t i = 0; i < result.size(); i++)
+    result[i] = buffers[i];
+  return result;
+}
+
+void SimpleShadowmapRender::freeCommandBuffers(std::vector<VkCommandBuffer> &buffers)
+{
+  std::vector<vk::CommandBuffer> vkBuffers(buffers.size());
+  for (size_t i = 0; i < vkBuffers.size(); i++)
+    vkBuffers[i] = buffers[i];
+  m_context->freeCommandBuffers(vkBuffers);
 }

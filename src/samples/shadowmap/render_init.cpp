@@ -38,7 +38,6 @@ void SimpleShadowmapRender::InitVulkan(const char** a_instanceExtensions, uint32
     });
   
   m_context = &etna::get_context();
-
   m_pScnMgr = std::make_shared<SceneManager>(false);
 }
 

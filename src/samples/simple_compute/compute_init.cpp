@@ -26,17 +26,10 @@ void SimpleCompute::InitVulkan(const char** a_instanceExtensions, uint32_t a_ins
   );
 
   m_context = &etna::get_context();
-  m_commandPool = vk_utils::createCommandPool(m_context->getDevice(), m_context->getQueueFamilyIdx(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-  
-  m_cmdBufferCompute = vk_utils::createCommandBuffers(m_context->getDevice(), m_commandPool, 1)[0];
+  m_cmdBufferCompute = m_context->createCommandBuffer();
 }
 
 void SimpleCompute::Cleanup()
 {
   CleanupPipeline();
-
-  if (m_commandPool != VK_NULL_HANDLE)
-  {
-    vkDestroyCommandPool(m_context->getDevice(), m_commandPool, nullptr);
-  }
 }

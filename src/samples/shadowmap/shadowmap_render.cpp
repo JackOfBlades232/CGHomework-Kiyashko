@@ -1,8 +1,5 @@
 #include "shadowmap_render.h"
 
-#include <geom/vk_mesh.h>
-#include <vk_pipeline.h>
-#include <vk_buffers.h>
 #include <iostream>
 
 #include <etna/GlobalContext.hpp>

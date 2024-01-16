@@ -63,6 +63,7 @@ private:
 
   std::vector<MeshInfo> m_meshInfos = {};
   std::vector<LiteMath::Box4f> m_meshBboxes = {};
+  // @TODO: reimplement mesh in etna
   std::shared_ptr<IMeshData> m_pMeshData = nullptr;
 
   std::vector<InstanceInfo> m_instanceInfos = {};

@@ -44,7 +44,7 @@ void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
 
   vk::Queue queue = m_context->getQueue();
   // @TODO: check result hpp-style
-  queue.submit({ submitInfo });
+  queue.submit({ submitInfo }, m_frameFences[m_presentationResources.currentFrame]);
 
   // @TODO: all the rest shall be remade
   vk::Result presentRes = (vk::Result)m_swapchain.QueuePresent(m_presentationResources.queue, imageIdx,

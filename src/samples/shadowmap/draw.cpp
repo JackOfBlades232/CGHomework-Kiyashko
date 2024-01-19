@@ -8,8 +8,8 @@
 void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
 {
   vk::Device device = m_context->getDevice();
-  device.waitForFences({ m_frameFences[m_presentationResources.currentFrame] }, VK_TRUE, UINT64_MAX);
-  device.resetFences({ m_frameFences[m_presentationResources.currentFrame] });
+  ETNA_VK_ASSERT(device.waitForFences({ m_frameFences[m_presentationResources.currentFrame] }, VK_TRUE, UINT64_MAX));
+  ETNA_VK_ASSERT(device.resetFences({ m_frameFences[m_presentationResources.currentFrame] }));
 
   uint32_t imageIdx;
   m_swapchain.AcquireNextImage(m_presentationResources.imageAvailable, &imageIdx);
@@ -43,8 +43,7 @@ void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
   };
 
   vk::Queue queue = m_context->getQueue();
-  // @TODO: check result hpp-style
-  queue.submit({ submitInfo }, m_frameFences[m_presentationResources.currentFrame]);
+  ETNA_VK_ASSERT(queue.submit({ submitInfo }, m_frameFences[m_presentationResources.currentFrame]));
 
   // @TODO: all the rest shall be remade
   vk::Result presentRes = (vk::Result)m_swapchain.QueuePresent(m_presentationResources.queue, imageIdx,
@@ -61,7 +60,7 @@ void SimpleShadowmapRender::DrawFrameSimple(bool draw_gui)
 
   m_presentationResources.currentFrame = (m_presentationResources.currentFrame + 1) % m_framesInFlight;
 
-  m_presentationResources.queue.waitIdle();
+  ETNA_VK_ASSERT(m_presentationResources.queue.waitIdle());
   etna::submit();
 }
 

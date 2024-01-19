@@ -5,9 +5,9 @@
 #include "../loader_utils/hydraxml.h"
 
 
-VkTransformMatrixKHR transformMatrixFromFloat4x4(const LiteMath::float4x4 &m)
+vk::TransformMatrixKHR transformMatrixFromFloat4x4(const LiteMath::float4x4 &m)
 {
-  VkTransformMatrixKHR transformMatrix;
+  vk::TransformMatrixKHR transformMatrix;
   for(int i = 0; i < 3; ++i)
   {
     for(int j = 0; j < 4; ++j)

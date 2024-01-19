@@ -1,4 +1,5 @@
 #include "shadowmap_render.h"
+#include <etna/Assert.hpp>
 
 #include "../../render/render_gui.h"
 
@@ -7,19 +8,15 @@ void SimpleShadowmapRender::InitPresentStuff()
   vk::SemaphoreCreateInfo semaphoreInfo = {};
 
   vk::Device device = m_context->getDevice();
-  // @TODO: error checks
-  m_presentationResources.imageAvailable = device.createSemaphore({}).value;
-  m_presentationResources.renderingFinished = device.createSemaphore({}).value;
+  m_presentationResources.imageAvailable    = etna::validate_vk_result(device.createSemaphore({}));
+  m_presentationResources.renderingFinished = etna::validate_vk_result(device.createSemaphore({}));
 
   m_cmdBuffersDrawMain = m_context->createCommandBuffers(m_framesInFlight);
 
   m_frameFences.resize(m_framesInFlight);
   vk::FenceCreateInfo fenceInfo = { .flags = vk::FenceCreateFlagBits::eSignaled };
   for (size_t i = 0; i < m_framesInFlight; i++)
-  {
-    // @TODO: error checks
-    m_frameFences[i] = device.createFence(fenceInfo).value;
-  }
+    m_frameFences[i] = etna::validate_vk_result(device.createFence(fenceInfo));
 
   m_pGUIRender = std::make_shared<ImGuiRender>(
     m_context->getInstance(),
@@ -38,19 +35,15 @@ void SimpleShadowmapRender::ResetPresentStuff()
     m_cmdBuffersDrawMain.clear();
   }
 
+  vk::Device device = m_context->getDevice();
+
   for (size_t i = 0; i < m_frameFences.size(); i++)
-  {
-    vkDestroyFence(m_context->getDevice(), m_frameFences[i], nullptr);
-  }
+    device.destroyFence(m_frameFences[i]);
 
   if (m_presentationResources.imageAvailable != VK_NULL_HANDLE)
-  {
-    vkDestroySemaphore(m_context->getDevice(), m_presentationResources.imageAvailable, nullptr);
-  }
+    device.destroySemaphore(m_presentationResources.imageAvailable);
   if (m_presentationResources.renderingFinished != VK_NULL_HANDLE)
-  {
-    vkDestroySemaphore(m_context->getDevice(), m_presentationResources.renderingFinished, nullptr);
-  }
+    device.destroySemaphore(m_presentationResources.renderingFinished);
 }
 
 void SimpleShadowmapRender::InitPresentation(vk::SurfaceKHR &a_surface, bool)

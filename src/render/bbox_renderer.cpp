@@ -3,8 +3,6 @@
 #include "etna/Etna.hpp"
 #include "etna/RenderTargetStates.hpp"
 
-#include <iostream>
-
 const LiteMath::float4 BboxRenderer::s_boxVert[8] =
 {
   {0.f, 0.f, 0.f, 1.f},
@@ -133,20 +131,18 @@ void BboxRenderer::SetBoxes(const LiteMath::Box4f *boxes, size_t cnt)
   }
 }
 
-void BboxRenderer::DrawCmd(VkCommandBuffer cmdBuff, 
-  VkImage targetImage, VkImageView targetImageView, 
+void BboxRenderer::DrawCmd(vk::CommandBuffer cmdBuff, 
+  vk::Image targetImage, vk::ImageView targetImageView, 
   const etna::Image &depthImage, const LiteMath::float4x4 &mViewProj)
 {
   etna::RenderTargetState renderTargets(cmdBuff,
     {0, 0, m_extent.width, m_extent.height},
     {{targetImage, targetImageView, false}}, {depthImage, false});
 
-  vkCmdBindPipeline(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.getVkPipeline());
+  cmdBuff.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline.getVkPipeline());
 
-  VkDeviceSize zeroOffset = 0;
-  VkBuffer vertexBuff     = m_vertexBuffer.get();
-  vkCmdBindVertexBuffers(cmdBuff, 0, 1, &vertexBuff, &zeroOffset);
-  vkCmdBindIndexBuffer(cmdBuff, m_indexBuffer.get(), 0, VK_INDEX_TYPE_UINT32);
+  cmdBuff.bindVertexBuffers(0, {m_vertexBuffer.get()}, (vk::DeviceSize)0);
+  cmdBuff.bindIndexBuffer(m_indexBuffer.get(), 0, vk::IndexType::eUint32);
 
   if (m_drawInstanced)
   {
@@ -156,14 +152,13 @@ void BboxRenderer::DrawCmd(VkCommandBuffer cmdBuff,
         etna::Binding{0, m_boxesInstBuffer.genBinding()}
       });
 
-    VkDescriptorSet vkSet = set.getVkSet();
+    vk::DescriptorSet vkSet = set.getVkSet();
 
-    vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      m_pipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+    cmdBuff.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipeline.getVkPipelineLayout(), 0, {vkSet}, {});
 
-    vkCmdPushConstants(cmdBuff, m_pipeline.getVkPipelineLayout(), 
-      VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(LiteMath::float4x4), &mViewProj);
-    vkCmdDrawIndexed(cmdBuff, sizeof(s_boxInd)/sizeof(s_boxInd[0]), m_instances.size(), 0, 0, 0);
+    cmdBuff.pushConstants(m_pipeline.getVkPipelineLayout(), 
+      vk::ShaderStageFlagBits::eVertex, 0, sizeof(LiteMath::float4x4), &mViewProj);
+    cmdBuff.drawIndexed(sizeof(s_boxInd)/sizeof(s_boxInd[0]), m_instances.size(), 0, 0, 0);
   }
   else
   {
@@ -173,9 +168,9 @@ void BboxRenderer::DrawCmd(VkCommandBuffer cmdBuff,
       pushConst.mInst       = inst;
       memcpy(&pushConst.mViewProj, &mViewProj, sizeof(LiteMath::float4x4));
 
-      vkCmdPushConstants(cmdBuff, m_pipeline.getVkPipelineLayout(), 
-        VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst), &pushConst);
-      vkCmdDrawIndexed(cmdBuff, sizeof(s_boxInd)/sizeof(s_boxInd[0]), 1, 0, 0, 0);
+      cmdBuff.pushConstants(m_pipeline.getVkPipelineLayout(), 
+        vk::ShaderStageFlagBits::eVertex, 0, sizeof(pushConst), &pushConst);
+      cmdBuff.drawIndexed(sizeof(s_boxInd)/sizeof(s_boxInd[0]), 1, 0, 0, 0);
     }
   }
 }

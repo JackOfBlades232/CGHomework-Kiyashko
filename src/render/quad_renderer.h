@@ -25,13 +25,13 @@ public:
   };
 
   void Create(const char *vspath, const char *fspath, CreateInfo info);
-  void DrawCmd(VkCommandBuffer cmdBuff, VkImage targetImage, VkImageView targetImageView,
+  void DrawCmd(vk::CommandBuffer cmdBuff, vk::Image targetImage, vk::ImageView targetImageView,
                const etna::Image &inTex, const etna::Sampler &sampler);
 
 private:
-  etna::GraphicsPipeline m_pipeline;
-  etna::ShaderProgramId m_programId;
-  vk::Rect2D m_rect {};
+  etna::GraphicsPipeline m_pipeline{};
+  etna::ShaderProgramId m_programId{};
+  vk::Rect2D m_rect{};
 
   QuadRenderer(const QuadRenderer &) = delete;
   QuadRenderer& operator=(const QuadRenderer &) = delete;

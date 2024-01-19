@@ -20,7 +20,7 @@ void QuadRenderer::Create(const char *vspath, const char *fspath, CreateInfo inf
     });
 }
 
-void QuadRenderer::DrawCmd(VkCommandBuffer cmdBuff, VkImage targetImage, VkImageView targetImageView,
+void QuadRenderer::DrawCmd(vk::CommandBuffer cmdBuff, vk::Image targetImage, vk::ImageView targetImageView,
                            const etna::Image &inTex, const etna::Sampler &sampler)
 {
   auto programInfo = etna::get_shader_program(m_programId);
@@ -28,13 +28,12 @@ void QuadRenderer::DrawCmd(VkCommandBuffer cmdBuff, VkImage targetImage, VkImage
     {
       etna::Binding {0, inTex.genBinding(sampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
     });
-  VkDescriptorSet vkSet = set.getVkSet();
+  vk::DescriptorSet vkSet = set.getVkSet();
 
   etna::RenderTargetState renderTargets(cmdBuff, m_rect, {{targetImage, targetImageView, false}}, {});
 
-  vkCmdBindPipeline(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.getVkPipeline());
-  vkCmdBindDescriptorSets(cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    m_pipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+  cmdBuff.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline.getVkPipeline());
+  cmdBuff.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipeline.getVkPipelineLayout(), 0, {vkSet}, {});
 
-  vkCmdDraw(cmdBuff, 3, 1, 0, 0);
+  cmdBuff.draw(3, 1, 0, 0);
 }

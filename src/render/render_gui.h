@@ -9,6 +9,7 @@
 #include <vk_swapchain.h>
 #include <memory>
 
+// @TODO: remake to .hpp
 class IRenderGUI
 {
 public:

@@ -1,4 +1,5 @@
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    add_compile_definitions(NOMINMAX)
     include_directories(${CMAKE_SOURCE_DIR}/external/glfw/include)
     link_directories(${CMAKE_SOURCE_DIR}/external/glfw)
 else()

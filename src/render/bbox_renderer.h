@@ -32,8 +32,8 @@ public:
   void SetBoxes(const LiteMath::Box4f *boxes, size_t cnt);
   inline void SetBoxes(const std::vector<LiteMath::Box4f> &boxes) { SetBoxes(boxes.data(), boxes.size()); }
 
-  void DrawCmd(VkCommandBuffer cmdBuff, 
-    VkImage targetImage, VkImageView targetImageView, 
+  void DrawCmd(vk::CommandBuffer cmdBuff, 
+    vk::Image targetImage, vk::ImageView targetImageView, 
     const etna::Image &depthImage, const LiteMath::float4x4 &mViewProj);
 
 private:

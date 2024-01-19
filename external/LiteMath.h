@@ -1,7 +1,6 @@
 //https://github.com/msu-graphics-group/LiteMath/blob/main/LiteMath.h
 #pragma once
 
-#define NOMINMAX
 #include <cmath>
 #include <limits>// for std::numeric_limits
 #include <cstring>// for memcpy

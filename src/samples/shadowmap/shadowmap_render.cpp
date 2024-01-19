@@ -61,7 +61,7 @@ void SimpleShadowmapRender::DeallocateResources()
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   shadowMap.reset();
   m_swapchain.Cleanup();
-  vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
+  m_context->getInstance().destroySurfaceKHR(m_surface);
 
   constants = etna::Buffer();
 }
@@ -139,6 +139,7 @@ void SimpleShadowmapRender::SetupSimplePipeline()
 void SimpleShadowmapRender::DestroyPipelines()
 {
   m_pQuad = nullptr; // smartptr delete it's resources
+  m_pBbox = nullptr;
 }
 
 
@@ -170,12 +171,12 @@ void SimpleShadowmapRender::DrawSceneCmd(vk::CommandBuffer a_cmdBuff, const floa
 
 void SimpleShadowmapRender::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Image a_targetImage, vk::ImageView a_targetImageView)
 {
-  vkResetCommandBuffer(a_cmdBuff, 0);
+  a_cmdBuff.reset();
 
   vk::CommandBufferBeginInfo beginInfo = { .flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse };
 
   // @TODO: error checks in all function
-  a_cmdBuff.begin(beginInfo);
+  ETNA_VK_ASSERT(a_cmdBuff.begin(beginInfo));
 
   //// draw scene to shadowmap
   //
@@ -219,5 +220,5 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff
 
   etna::finish_frame(a_cmdBuff);
 
-  a_cmdBuff.end();
+  ETNA_VK_ASSERT(a_cmdBuff.end());
 }

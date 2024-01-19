@@ -3,7 +3,6 @@
 
 // #define VK_NO_PROTOTYPES
 #include "../../render/compute_common.h"
-#include "../resources/shaders/common.h"
 
 #include <etna/GlobalContext.hpp>
 #include <etna/ComputePipeline.hpp>

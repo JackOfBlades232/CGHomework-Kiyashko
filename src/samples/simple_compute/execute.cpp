@@ -1,6 +1,7 @@
 #include "simple_compute.h"
 
 #include <etna/Etna.hpp>
+#include <etna/Assert.hpp>
 
 
 void SimpleCompute::Execute()
@@ -14,7 +15,7 @@ void SimpleCompute::Execute()
   vk::Queue queue = m_context->getQueue();
 
   // @TODO: check all results
-  m_fence = device.createFence({}).value;
+  m_fence = etna::validate_vk_result(device.createFence({}));
 
   vk::SubmitInfo submitInfo = 
   {
@@ -23,10 +24,10 @@ void SimpleCompute::Execute()
   };
   
   // Submit the command buffer for execution
-  queue.submit({submitInfo}, m_fence);
+  ETNA_VK_ASSERT(queue.submit({submitInfo}, m_fence));
 
   // And wait for the execution to be completed
-  device.waitForFences({m_fence}, true, UINT64_MAX);
+  ETNA_VK_ASSERT(device.waitForFences({m_fence}, true, UINT64_MAX));
 
   std::vector<float> values(m_length);
   m_sum.readOnce((std::byte *)values.data(),  sizeof(float) * values.size());

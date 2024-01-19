@@ -1,7 +1,6 @@
 #include "simple_compute.h"
 
 #include <etna/Etna.hpp>
-#include <vulkan/vulkan_core.h>
 
 
 void SimpleCompute::loadShaders()
@@ -58,17 +57,17 @@ void SimpleCompute::CleanupPipeline()
   m_A.reset();
   m_B.reset();
   m_sum.reset();
-  vkDestroyFence(m_context->getDevice(), m_fence, nullptr);
+  m_context->getDevice().destroyFence({m_fence});
 }
 
 void SimpleCompute::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Pipeline a_pipeline)
 {
-  vkResetCommandBuffer(a_cmdBuff, 0);
+  a_cmdBuff.reset();
 
   vk::CommandBufferBeginInfo beginInfo = { .flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse };
+
   // Filling the command buffer
-  // @TODO: error checks everywhere
-  a_cmdBuff.begin(beginInfo);
+  ETNA_VK_ASSERT(a_cmdBuff.begin(beginInfo));
 
   auto simpleComputeInfo = etna::get_shader_program("simple_compute");
 
@@ -79,7 +78,7 @@ void SimpleCompute::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Pi
       etna::Binding {2, m_sum.genBinding()},
     });
 
-  VkDescriptorSet vkSet = set.getVkSet();
+  vk::DescriptorSet vkSet = set.getVkSet();
 
   a_cmdBuff.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline.getVkPipeline());
   a_cmdBuff.bindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipeline.getVkPipelineLayout(), 0, {vkSet}, {});
@@ -90,5 +89,5 @@ void SimpleCompute::BuildCommandBufferSimple(vk::CommandBuffer a_cmdBuff, vk::Pi
 
   a_cmdBuff.dispatch(1, 1, 1);
 
-  a_cmdBuff.end();
+  ETNA_VK_ASSERT(a_cmdBuff.end());
 }

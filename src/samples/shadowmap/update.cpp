@@ -3,11 +3,14 @@
 #include "etna/Etna.hpp"
 #include "shadowmap_render.h"
 
+#include <cmath>
+
 void SimpleShadowmapRender::UpdateCamera(const Camera* cams, uint32_t a_camsNumber)
 {
   m_cam = cams[0];
-  if(a_camsNumber >= 2)
-    m_light.cam = cams[1];
+  // @HACK: imgui is here for it
+  //if(a_camsNumber >= 2)
+    //m_light.cam = cams[1];
   UpdateView(); 
 }
 
@@ -43,7 +46,13 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
 {
   m_uniforms.lightMatrix = m_lightMatrix;
   m_uniforms.lightPos    = m_light.cam.pos; //LiteMath::float3(sinf(a_time), 1.0f, cosf(a_time));
+  m_uniforms.lightDir    = m_light.cam.forward();
   m_uniforms.time        = a_time;
+
+  if (m_light.innerAndOuterAngles[1] < m_light.innerAndOuterAngles[0])
+    m_light.innerAndOuterAngles[1] = m_light.innerAndOuterAngles[0];
+  m_uniforms.lightAngleInner = DEG_TO_RAD * m_light.innerAndOuterAngles[0];
+  m_uniforms.lightAngleOuter = DEG_TO_RAD * m_light.innerAndOuterAngles[1];
 
   memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
 }
@@ -56,8 +65,9 @@ void SimpleShadowmapRender::ProcessInput(const AppInput &input)
   if(input.keyReleased[GLFW_KEY_Q])
     m_input.drawFSQuad = !m_input.drawFSQuad;
 
-  if(input.keyReleased[GLFW_KEY_P])
-    m_light.usePerspectiveM = !m_light.usePerspectiveM;
+  // @NOTE: turned of for hw: spot light
+  // if(input.keyReleased[GLFW_KEY_P])
+    // m_light.usePerspectiveM = !m_light.usePerspectiveM;
 
   // recreate pipeline to reload shaders
   if(input.keyPressed[GLFW_KEY_B])

@@ -46,7 +46,7 @@ public:
 private:
   etna::GlobalContext* m_context;
   etna::Image mainViewDepth;
-  etna::Image shadowMap;
+  etna::Image shadowMap, lightMap;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
@@ -121,7 +121,7 @@ private:
     float  lightTargetDist;  ///!< identify depth range
     Camera cam;              ///!< user control for light to later get light worldViewProj matrix
     bool   usePerspectiveM;  ///!< use perspective matrix if true and ortographics otherwise
-  
+    float  innerAndOuterAngles[2] = { 5.f, 10.f };
   } m_light;
  
   void DrawFrameSimple(bool draw_gui);

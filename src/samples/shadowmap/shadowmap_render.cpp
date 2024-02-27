@@ -66,9 +66,6 @@ void SimpleShadowmapRender::DeallocateResources()
 }
 
 
-
-
-
 /// PIPELINES CREATION
 
 void SimpleShadowmapRender::PreparePipelines()
@@ -157,14 +154,15 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   {
     etna::GraphicsPipeline &shadowmapPipeline = CurrentShadowmapPipeline();
 
-    etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, 2048, 2048}, {}, {.image = shadowMap.get(), .view = shadowMap.getView({})});
+    etna::RenderTargetState renderTargets(a_cmdBuff, { 0, 0, 2048, 2048 }, CurrentShadowColorAttachments(), {.image = shadowMap.get(), .view = shadowMap.getView({})});
 
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline.getVkPipeline());
     DrawSceneCmd(a_cmdBuff, m_lightMatrix, shadowmapPipeline.getVkPipelineLayout());
   }
 
-  if (currentShadowmapTechnique == eVsm)
-    FilterVsmTextureCmd(a_cmdBuff);
+  //// Process shadowmap if need be (vsm)
+  //
+  RecordShadowmapProcessingCommands(a_cmdBuff);
 
   //// draw final scene to screen
   //

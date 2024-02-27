@@ -17,6 +17,7 @@
 
 #include <etna/GlobalContext.hpp>
 #include <etna/Sampler.hpp>
+#include <etna/RenderTargetStates.hpp>
 
 
 class IRenderGUI;
@@ -54,6 +55,7 @@ private:
   etna::Image mainViewDepth;
   etna::Image shadowMap;
   etna::Image vsmMomentMap;
+  etna::Image vsmSmoothMomentMap;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
@@ -84,9 +86,13 @@ private:
 
   etna::GraphicsPipeline m_basicForwardPipeline {};
   etna::GraphicsPipeline m_simpleShadowPipeline {};
+
   etna::GraphicsPipeline m_vsmForwardPipeline   {};
-  etna::ComputePipeline  m_vsmFilteringPipeline {};
+  etna::GraphicsPipeline m_vsmShadowPipeline    {};
+
   etna::GraphicsPipeline m_pcfForwardPipeline   {};
+
+  etna::ComputePipeline  m_vsmFilteringPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -111,7 +117,7 @@ private:
     eSimple = 0,
     eVsm    = 1,
     ePcf    = 2,
-    eEsm    = 3,
+    // @TODO: esm (someday)
 
     eTechMax
   };
@@ -175,10 +181,11 @@ private:
   void DeallocateShadowmapResources();
   void LoadShadowmapShaders();
   void SetupShadowmapPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc);
+  std::vector<etna::RenderTargetState::AttachmentParams> CurrentShadowColorAttachments();
   etna::GraphicsPipeline &CurrentShadowmapPipeline();
   etna::GraphicsPipeline &CurrentForwardPipeline();
   etna::DescriptorSet CreateCurrentForwardDSet(VkCommandBuffer a_cmdBuff);
-  void FilterVsmTextureCmd(VkCommandBuffer a_cmdBuff);
+  void RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff);
 };
 
 

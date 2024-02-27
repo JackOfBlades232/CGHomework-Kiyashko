@@ -11,6 +11,7 @@
 #include <LiteMath.h>
 
 #include <cassert>
+static_assert(WINDOW_HALFSIZE <= WORK_GROUP_DIM); // for compute shader
 
 // NOTE: This is technically completely wrong,
 // as GLSL words are guaranteed to be 32-bit,

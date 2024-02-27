@@ -21,6 +21,7 @@ layout(binding = 0, set = 0) uniform AppData
 
 layout (binding = 1) uniform sampler2D shadowMap;
 
+// This could've been pulled out...
 void main()
 {
     const vec4 posLightClipSpace = Params.lightMatrix*vec4(surf.wPos, 1.0f); // 

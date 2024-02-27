@@ -3,9 +3,14 @@
 
 // GLSL-C++ datatype compatibility layer
 
+#define WORK_GROUP_DIM 16
+#define WINDOW_HALFSIZE 4
+
 #ifdef __cplusplus
 
 #include <LiteMath.h>
+
+#include <cassert>
 
 // NOTE: This is technically completely wrong,
 // as GLSL words are guaranteed to be 32-bit,

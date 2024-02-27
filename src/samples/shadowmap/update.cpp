@@ -6,8 +6,8 @@
 void SimpleShadowmapRender::UpdateCamera(const Camera* cams, uint32_t a_camsNumber)
 {
   m_cam = cams[0];
-  if(a_camsNumber >= 2)
-    m_light.cam = cams[1];
+  //if(a_camsNumber >= 2)
+    //m_light.cam = cams[1];
   UpdateView(); 
 }
 

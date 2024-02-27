@@ -24,7 +24,13 @@ class IRenderGUI;
 class SimpleShadowmapRender : public IRender
 {
 public:
-  SimpleShadowmapRender(uint32_t a_width, uint32_t a_height);
+  struct CreateInfo
+  {
+    uint32_t width;
+    uint32_t height;
+  };
+
+  SimpleShadowmapRender(CreateInfo info);
   ~SimpleShadowmapRender();
 
   uint32_t     GetWidth()      const override { return m_width; }
@@ -47,6 +53,7 @@ private:
   etna::GlobalContext* m_context;
   etna::Image mainViewDepth;
   etna::Image shadowMap;
+  etna::Image vsmMomentMap;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
@@ -76,7 +83,9 @@ private:
   void* m_uboMappedMem = nullptr;
 
   etna::GraphicsPipeline m_basicForwardPipeline {};
-  etna::GraphicsPipeline m_shadowPipeline {};
+  etna::GraphicsPipeline m_simpleShadowPipeline {};
+  etna::GraphicsPipeline m_vsmForwardPipeline   {};
+  etna::ComputePipeline  m_vsmFilteringPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -95,6 +104,18 @@ private:
   std::shared_ptr<IRenderGUI> m_pGUIRender;
   
   std::unique_ptr<QuadRenderer> m_pQuad;
+  
+  enum ShadowmapTechnique
+  {
+    eSimple = 0,
+    eVsm    = 1,
+    ePcf    = 2,
+    eEsm    = 3,
+
+    eTechMax
+  };
+
+  ShadowmapTechnique currentShadowmapTechnique = eVsm;
 
   struct InputControlMouseEtc
   {
@@ -132,11 +153,10 @@ private:
 
   void loadShaders();
 
-  void SetupSimplePipeline();
+  void SetupSimplePipeline(etna::VertexShaderInputDescription sceneVertexInputDesc);
   void RecreateSwapChain();
 
   void UpdateUniformBuffer(float a_time);
-
 
   void SetupDeviceExtensions();
 
@@ -148,6 +168,15 @@ private:
   void InitPresentStuff();
   void ResetPresentStuff();
   void SetupGUIElements();
+
+  // Shadowmap techniques
+  void AllocateShadowmapResources();
+  void DeallocateShadowmapResources();
+  void SetupShadowmapPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc);
+  etna::GraphicsPipeline &CurrentShadowmapPipeline();
+  etna::GraphicsPipeline &CurrentForwardPipeline();
+  etna::DescriptorSet CreateCurrentForwardDSet(VkCommandBuffer a_cmdBuff);
+  void FilterVsmTextureCmd(VkCommandBuffer a_cmdBuff);
 };
 
 

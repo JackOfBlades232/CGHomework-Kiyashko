@@ -26,6 +26,15 @@ void SimpleShadowmapRender::DeallocateShadowmapResources()
   vsmMomentMap.reset();
 }
 
+void SimpleShadowmapRender::LoadShadowmapShaders()
+{
+  etna::create_program("vsm_filtering", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_filter.comp.spv"});
+  etna::create_program("vsm_material",
+    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+  etna::create_program("pcf_material",
+    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+}
+
 void SimpleShadowmapRender::SetupShadowmapPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc)
 {
   auto& pipelineManager = etna::get_context().getPipelineManager();
@@ -47,6 +56,15 @@ void SimpleShadowmapRender::SetupShadowmapPipelines(etna::VertexShaderInputDescr
           .depthAttachmentFormat = vk::Format::eD32Sfloat
         }
     });
+  m_pcfForwardPipeline = pipelineManager.createGraphicsPipeline("pcf_material",
+    {
+      .vertexShaderInput = sceneVertexInputDesc,
+      .fragmentShaderOutput =
+        {
+          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
+          .depthAttachmentFormat = vk::Format::eD32Sfloat
+        }
+    });
 }
 
 etna::GraphicsPipeline &SimpleShadowmapRender::CurrentShadowmapPipeline()
@@ -55,9 +73,9 @@ etna::GraphicsPipeline &SimpleShadowmapRender::CurrentShadowmapPipeline()
   {
   case eSimple:
   case eVsm:
+  case ePcf:
     return m_simpleShadowPipeline;
   // Not implemented
-  case ePcf:
   case eEsm:
   default:
     return m_simpleShadowPipeline;
@@ -72,8 +90,9 @@ etna::GraphicsPipeline &SimpleShadowmapRender::CurrentForwardPipeline()
     return m_basicForwardPipeline;
   case eVsm:
     return m_vsmForwardPipeline;
-  // Not implemented
   case ePcf:
+    return m_pcfForwardPipeline;
+  // Not implemented
   case eEsm:
   default:
     return m_basicForwardPipeline;
@@ -85,6 +104,7 @@ etna::DescriptorSet SimpleShadowmapRender::CreateCurrentForwardDSet(VkCommandBuf
   switch (currentShadowmapTechnique)
   {
   case eSimple: 
+  case ePcf:
   {
     auto materialInfo = etna::get_shader_program("simple_material");
     return std::move(etna::create_descriptor_set(materialInfo.getDescriptorLayoutId(0), a_cmdBuff, {
@@ -101,7 +121,6 @@ etna::DescriptorSet SimpleShadowmapRender::CreateCurrentForwardDSet(VkCommandBuf
     }));
   }
   // Not implemented
-  case ePcf:
   case eEsm:
   default: 
   {

@@ -43,7 +43,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
   m_pScnMgr->LoadSceneXML(path, transpose_inst_matrices);
 
   // TODO: Make a separate stage
-  loadShaders();
+  LoadShaders();
   PreparePipelines();
 
   auto loadedCam = m_pScnMgr->GetCamera(0);
@@ -92,14 +92,13 @@ void SimpleShadowmapRender::PreparePipelines()
   SetupShadowmapPipelines(sceneVertexInputDesc);
 }
 
-void SimpleShadowmapRender::loadShaders()
+void SimpleShadowmapRender::LoadShaders()
 {
   etna::create_program("simple_material",
     {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
   etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
-  etna::create_program("vsm_filtering", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_filter.comp.spv"});
-  etna::create_program("vsm_material",
-    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+
+  LoadShadowmapShaders();
 }
 
 void SimpleShadowmapRender::SetupSimplePipeline(etna::VertexShaderInputDescription sceneVertexInputDesc)

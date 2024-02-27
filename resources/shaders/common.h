@@ -4,7 +4,7 @@
 // GLSL-C++ datatype compatibility layer
 
 #define WORK_GROUP_DIM 16
-#define WINDOW_HALFSIZE 4
+#define WINDOW_HALFSIZE 5
 
 #ifdef __cplusplus
 

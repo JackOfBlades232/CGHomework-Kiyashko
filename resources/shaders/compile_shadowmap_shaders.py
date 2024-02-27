@@ -12,6 +12,7 @@ if __name__ == '__main__':
         "simple_shadow.frag", 
         "vsm_filter.comp",
         "vsm_shadow.frag", 
+        "vsm_shadowmap.frag", 
         "pcf_shadow.frag", 
     ]
 

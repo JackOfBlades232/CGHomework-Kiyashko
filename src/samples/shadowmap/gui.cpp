@@ -14,7 +14,7 @@ void SimpleShadowmapRender::SetupGUIElements()
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
     ImGui::SliderFloat3("Light source position", m_light.cam.pos.M, -10.f, 10.f);
 
-    const char *items[eTechMax] = { "Simple", "VSM", "PCF", "ESM (not imlemented)" };
+    const char *items[eTechMax] = { "Simple", "VSM", "PCF" };
     static const char *currentItem = items[currentShadowmapTechnique];
 
     ImGuiStyle &style = ImGui::GetStyle();

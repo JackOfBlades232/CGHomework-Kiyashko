@@ -86,6 +86,7 @@ private:
   etna::GraphicsPipeline m_simpleShadowPipeline {};
   etna::GraphicsPipeline m_vsmForwardPipeline   {};
   etna::ComputePipeline  m_vsmFilteringPipeline {};
+  etna::GraphicsPipeline m_pcfForwardPipeline   {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -151,7 +152,7 @@ private:
 
   void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
 
-  void loadShaders();
+  void LoadShaders();
 
   void SetupSimplePipeline(etna::VertexShaderInputDescription sceneVertexInputDesc);
   void RecreateSwapChain();
@@ -172,6 +173,7 @@ private:
   // Shadowmap techniques
   void AllocateShadowmapResources();
   void DeallocateShadowmapResources();
+  void LoadShadowmapShaders();
   void SetupShadowmapPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc);
   etna::GraphicsPipeline &CurrentShadowmapPipeline();
   etna::GraphicsPipeline &CurrentForwardPipeline();

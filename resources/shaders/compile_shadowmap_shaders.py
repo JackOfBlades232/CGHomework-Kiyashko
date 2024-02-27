@@ -12,6 +12,7 @@ if __name__ == '__main__':
         "simple_shadow.frag", 
         "vsm_filter.comp",
         "vsm_shadow.frag", 
+        "pcf_shadow.frag", 
     ]
 
     for shader in shader_list:

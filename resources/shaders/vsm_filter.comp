@@ -1,0 +1,33 @@
+#version 450
+#extension GL_ARB_shader_image_load_store : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+layout(local_size_x = WORK_GROUP_DIM, local_size_y = WORK_GROUP_DIM) in;
+
+// Texture and image considered same size
+layout(binding = 0) uniform sampler2D depthTex;
+layout(binding = 1, rg32f) uniform image2D smoothedMomentsTex;
+
+void main() 
+{
+    const ivec2 texSize = imageSize(smoothedMomentsTex);
+    const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
+
+    // @TODO: shared mem, if I get to it
+
+    if (globalCoord.x < texSize.x && globalCoord.y < texSize.y) {
+        vec2 accum = vec2(0.0f);
+        const float div = float((2*WINDOW_HALFSIZE + 1)*(2*WINDOW_HALFSIZE + 1));
+
+        for (int y = globalCoord.y - WINDOW_HALFSIZE; y < globalCoord.y + WINDOW_HALFSIZE + 1; ++y)
+            for (int x = globalCoord.x - WINDOW_HALFSIZE; x < globalCoord.x + WINDOW_HALFSIZE + 1; ++x) {
+                float depth = textureLod(depthTex, vec2(x, y)/texSize, 0).x;
+                accum += vec2(depth, depth*depth);
+            }
+
+        imageStore(smoothedMomentsTex, globalCoord, vec4(accum/div, 1.0f, 1.0f));
+    }
+}

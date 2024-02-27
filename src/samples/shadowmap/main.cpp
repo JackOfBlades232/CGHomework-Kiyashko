@@ -29,7 +29,7 @@ int main()
   constexpr int WIDTH = 1024;
   constexpr int HEIGHT = 1024;
 
-  std::shared_ptr<IRender> app = std::make_unique<SimpleShadowmapRender>(WIDTH, HEIGHT);
+  std::shared_ptr<IRender> app = std::make_unique<SimpleShadowmapRender>(SimpleShadowmapRender::CreateInfo{WIDTH, HEIGHT});
   if(app == nullptr)
   {
     std::cout << "Can't create render of specified type" << std::endl;

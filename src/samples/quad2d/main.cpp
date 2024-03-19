@@ -1,5 +1,6 @@
 #include "quad2d_render.h"
 #include "utils/glfw_window.h"
+#include <etna/Etna.hpp>
 
 void initVulkanGLFW(std::shared_ptr<IRender> &app, GLFWwindow* window, int deviceID, bool initGUI)
 {

@@ -4,12 +4,7 @@
 #define VK_NO_PROTOTYPES
 #include "../../render/render_common.h"
 #include "../resources/shaders/common.h"
-#include <vk_descriptor_sets.h>
-#include <vk_fbuf_attachment.h>
-#include <vk_images.h>
 #include <vk_swapchain.h>
-#include <vk_quad.h>
-#include <vk_copy.h>
 
 #include <string>
 #include <iostream>

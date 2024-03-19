@@ -7,9 +7,11 @@ else()
 endif()
 
 set(RENDER_SOURCE
-        #../../render/scene_mgr.cpp
-        ../../render/render_imgui.cpp
-        quad2d_render.cpp)
+        ../../render/quad_renderer.cpp
+        quad2d_render.cpp
+        render_init.cpp
+        draw.cpp
+        present.cpp)
 
 add_executable(quad_renderer main.cpp ../../utils/glfw_window.cpp ${VK_UTILS_SRC} ${SCENE_LOADER_SRC} ${RENDER_SOURCE} ${IMGUI_SRC})
 
@@ -17,8 +19,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     set_target_properties(quad_renderer PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
     target_link_libraries(quad_renderer PRIVATE project_options
-                          volk glfw3 project_warnings)
+                          etna glfw3 project_warnings)
 else()
     target_link_libraries(quad_renderer PRIVATE project_options
-                          volk glfw project_warnings) #
+                          etna glfw project_warnings)
 endif()

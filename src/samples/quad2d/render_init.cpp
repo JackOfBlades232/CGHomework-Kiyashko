@@ -1,0 +1,64 @@
+#include "quad2d_render.h"
+
+#include <etna/Etna.hpp>
+
+Quad2D_Render::Quad2D_Render(uint32_t a_width, uint32_t a_height) : m_width(a_width), m_height(a_height) 
+{
+}
+
+void Quad2D_Render::InitVulkan(const char** a_instanceExtensions, uint32_t a_instanceExtensionsCount, uint32_t a_deviceId)
+{
+  for(size_t i = 0; i < a_instanceExtensionsCount; ++i)
+    m_instanceExtensions.push_back(a_instanceExtensions[i]);
+
+  #ifndef NDEBUG
+    m_instanceExtensions.push_back("VK_EXT_debug_report");
+  #endif
+
+  SetupDeviceExtensions();
+  
+  etna::initialize(etna::InitParams
+    {
+      .applicationName = "Quad2DSample",
+      .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
+      .instanceExtensions = m_instanceExtensions,
+      .deviceExtensions = m_deviceExtensions,
+      .features = vk::PhysicalDeviceFeatures2
+        {
+          .features = m_enabledDeviceFeatures
+        },
+      // Replace with an index if etna detects your preferred GPU incorrectly 
+      .physicalDeviceIndexOverride = {}
+    });
+  
+  m_context = &etna::get_context();
+}
+
+void Quad2D_Render::SetupDeviceExtensions()
+{
+  m_deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+}
+
+void Quad2D_Render::RecreateSwapChain()
+{
+  ETNA_ASSERT(m_context->getDevice().waitIdle() == vk::Result::eSuccess);
+
+  DeallocateResources();
+
+  ResetPresentStuff();
+
+  auto oldImgNum = m_swapchain.GetImageCount();
+  m_presentationResources.queue = m_swapchain.CreateSwapChain(
+    m_context->getPhysicalDevice(), m_context->getDevice(), m_surface, m_width, m_height,
+         oldImgNum, m_vsync);
+
+  InitPresentStuff();
+
+  AllocateResources();
+}
+
+Quad2D_Render::~Quad2D_Render()
+{
+  DeallocateResources();
+  ResetPresentStuff();
+}

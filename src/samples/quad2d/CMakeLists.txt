@@ -10,10 +10,11 @@ set(RENDER_SOURCE
         ../../render/quad_renderer.cpp
         quad2d_render.cpp
         render_init.cpp
+        update.cpp
         draw.cpp
         present.cpp)
 
-add_executable(quad_renderer main.cpp ../../utils/glfw_window.cpp ${VK_UTILS_SRC} ${SCENE_LOADER_SRC} ${RENDER_SOURCE} ${IMGUI_SRC})
+add_executable(quad_renderer main.cpp ../../utils/glfw_window.cpp ${VK_UTILS_SRC} ${RENDER_SOURCE} ${IMGUI_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     set_target_properties(quad_renderer PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")

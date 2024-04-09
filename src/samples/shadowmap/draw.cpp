@@ -69,7 +69,7 @@ void SimpleShadowmapRender::DrawFrame(float a_time, DrawMode a_mode)
   switch (a_mode)
   {
     case DrawMode::WITH_GUI:
-      SetupGUIElements();
+      DoImGUI();
       DrawFrameSimple(true);
       break;
     case DrawMode::NO_GUI:

@@ -36,6 +36,7 @@ void SimpleShadowmapRender::AllocateResources()
   m_uboMappedMem = constants.map();
 
   AllocateShadowmapResources();
+  AllocateAAResources();
 }
 
 void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
@@ -56,6 +57,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 
 void SimpleShadowmapRender::DeallocateResources()
 {
+  DeallocateAAResources();
   DeallocateShadowmapResources();
 
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
@@ -168,13 +170,16 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   //
   {
     etna::GraphicsPipeline &materialPipeline = CurrentForwardPipeline();
+    etna::Image *aaRt                        = CurrentAARenderTarget();
+    etna::Image *aaDepth                     = CurrentAADepthTex();
 
     auto set = std::move(CreateCurrentForwardDSet(a_cmdBuff));
     VkDescriptorSet vkSet = set.getVkSet();
 
-    etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, m_width, m_height},
-      {{.image = a_targetImage, .view = a_targetImageView}},
-      {.image = mainViewDepth.get(), .view = mainViewDepth.getView({})});
+    etna::RenderTargetState renderTargets(a_cmdBuff, 
+      aaRt ? CurrentAARect() : vk::Rect2D{0, 0, m_width, m_height},
+      {{.image = aaRt ? (VkImage)aaRt->get() : a_targetImage, .view = aaRt ? (VkImageView)aaRt->getView({}) : a_targetImageView }},
+      {.image = aaDepth ? aaDepth->get() : mainViewDepth.get(), .view = aaDepth ? aaDepth->getView({}) : mainViewDepth.getView({})});
 
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, materialPipeline.getVkPipeline());
     vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -182,6 +187,10 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
     DrawSceneCmd(a_cmdBuff, m_worldViewProj, materialPipeline.getVkPipelineLayout());
   }
+
+  //// Apply aniti-aliasing
+  //
+  RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
     m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, vsmMomentMap /*shadowMap*/, defaultSampler);

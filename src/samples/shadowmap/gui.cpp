@@ -31,7 +31,7 @@ void SimpleShadowmapRender::DoImGUI()
   {
     settingsAreDirty = false;
     RebuildCurrentForwardPipeline();
-    ResetTaaReprojectionCoeff();
+    resetReprojection = true;
   }
 
   // Rendering

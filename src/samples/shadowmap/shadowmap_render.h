@@ -53,13 +53,23 @@ public:
 private:
   etna::GlobalContext* m_context;
   etna::Image mainViewDepth;
-  etna::Image shadowMap;
-  etna::Image vsmMomentMap;
-  etna::Image vsmSmoothMomentMap;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
-  VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
+  // Shadow maps
+  etna::Image shadowMap;
+  etna::Image vsmMomentMap;
+  etna::Image vsmSmoothMomentMap;
+
+  // Anti-aliasing
+  etna::Image ssaaRt;
+  etna::Image msaaRt;
+  etna::Image ssaaDepth;
+  etna::Image msaaDepth;
+  // @TODO: taa prev, cur
+  // @TODO: deferred for taa
+
+  VkCommandPool m_commandPool = VK_NULL_HANDLE;
 
   struct
   {
@@ -115,14 +125,33 @@ private:
   enum ShadowmapTechnique
   {
     eSimple = 0,
-    eVsm    = 1,
-    ePcf    = 2,
+    eVsm,
+    ePcf,
     // @TODO: esm (someday)
 
-    eTechMax
+    eShTechMax
+  };
+  enum AATechnique
+  {
+    eNone = 0,
+    eSsaa,
+    eMsaa,
+    // @TODO: taa
+
+    eAATechMax
+  };
+  enum AAScale // for ssaa and msaa
+  {
+    e2x = 2,
+    e4x = 4,
+    e8x = 8,
+
+    eAAScaleMax
   };
 
   ShadowmapTechnique currentShadowmapTechnique = eVsm;
+  AATechnique currentAATechnique               = eSsaa;
+  AAScale currentAAScale                       = e2x;
 
   struct InputControlMouseEtc
   {
@@ -174,7 +203,10 @@ private:
 
   void InitPresentStuff();
   void ResetPresentStuff();
-  void SetupGUIElements();
+
+  void DoImGUI();
+  void ShadowmapChoiceGUI();
+  void AAChoiceGui();
 
   // Shadowmap techniques
   void AllocateShadowmapResources();
@@ -186,6 +218,16 @@ private:
   etna::GraphicsPipeline &CurrentForwardPipeline();
   etna::DescriptorSet CreateCurrentForwardDSet(VkCommandBuffer a_cmdBuff);
   void RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff);
+
+  // AA techniques
+  void AllocateAAResources();
+  void DeallocateAAResources();
+  void RecreateAATexOnScaleChange();
+  etna::Image *CurrentAARenderTarget();
+  etna::Image *CurrentAADepthTex();
+  vk::Rect2D CurrentAARect();
+  void SetupAAPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc);
+  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 };
 
 

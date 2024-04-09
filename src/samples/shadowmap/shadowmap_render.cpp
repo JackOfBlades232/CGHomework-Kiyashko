@@ -199,7 +199,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, vsmMomentMap /*shadowMap*/, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, *taaPrevFrame, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,

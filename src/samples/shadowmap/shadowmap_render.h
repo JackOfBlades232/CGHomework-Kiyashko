@@ -66,9 +66,11 @@ private:
   etna::Image ssaaDepth;
   etna::Image msaaRt;
   etna::Image msaaDepth;
-  etna::Image taaRts[2];
-  etna::Image *taaRt = &taaRts[0];
-  etna::Image *taaPrevRt = &taaRts[1];
+
+  etna::Image taaFrames[2];
+  etna::Image *taaCurFrame = &taaFrames[0];
+  etna::Image *taaPrevFrame = &taaFrames[1];
+  etna::Image taaRt;
 
   VkCommandPool m_commandPool = VK_NULL_HANDLE;
 
@@ -92,8 +94,9 @@ private:
   float4x4 m_worldViewProj;
   float4x4 m_lightMatrix;    
 
+  // For taa reprojection
   float4x4 m_prevProjViewMatrix;
-  float m_reprojectionCoeff = 0.0f;
+  bool resetReprojection = true;
 
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
@@ -229,8 +232,7 @@ private:
   vk::Rect2D CurrentAARect();
   void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
   // @TODO(PKiyashko): this update should be less hacky, more centralized with others
-  void ResetTaaReprojectionCoeff();
-  void UpdateTaaReprojectionCoeff();
+  float CurrentTaaReprojectionCoeff();
 
   // Cross-technique builders (@TODO(PKiyashko): In the future, I should do everything like this for mix-match)
   void RebuildCurrentForwardPipeline();

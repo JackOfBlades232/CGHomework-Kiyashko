@@ -66,8 +66,9 @@ private:
   etna::Image ssaaDepth;
   etna::Image msaaRt;
   etna::Image msaaDepth;
-  // @TODO: taa prev, cur
-  // @TODO: deferred for taa
+  etna::Image taaRts[2];
+  etna::Image *taaRt = &taaRts[0];
+  etna::Image *taaPrevRt = &taaRts[1];
 
   VkCommandPool m_commandPool = VK_NULL_HANDLE;
 
@@ -91,6 +92,9 @@ private:
   float4x4 m_worldViewProj;
   float4x4 m_lightMatrix;    
 
+  float4x4 m_prevProjViewMatrix;
+  float m_reprojectionCoeff = 0.0f;
+
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
 
@@ -100,6 +104,9 @@ private:
   etna::GraphicsPipeline m_simpleShadowPipeline {};
   etna::GraphicsPipeline m_vsmShadowPipeline    {};
   etna::ComputePipeline  m_vsmFilteringPipeline {};
+
+  // Anti-aliasing @TODO(PKiyashko): proper postfx renderer for such stuff
+  etna::GraphicsPipeline m_taaReprojectionPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -124,23 +131,25 @@ private:
     eSimple = 0,
     eVsm,
     ePcf,
-    // @TODO: esm (someday)
+    // @TODO(PKiyashko): esm (someday)
 
     eShTechMax
   };
   // @TODO(PKiyashko): add different scale settings (xN)
+  // @TODO(PKiyashko): deferred
+  // @TODO(PKiyashko): proper taa with motion vectors and deferred
   enum AATechnique
   {
     eNone = 0,
     eSsaa,
     eMsaa,
-    // @TODO: taa
+    eTaa,
 
     eAATechMax
   };
 
-  ShadowmapTechnique currentShadowmapTechnique = eVsm;
-  AATechnique currentAATechnique               = eSsaa;
+  ShadowmapTechnique currentShadowmapTechnique = eSimple;//eVsm;
+  AATechnique currentAATechnique               = eTaa;//eMsaa;
 
   bool settingsAreDirty = false;
 
@@ -213,10 +222,15 @@ private:
   // AA techniques
   void AllocateAAResources();
   void DeallocateAAResources();
+  void LoadAAShaders();
+  void SetupAAPipelines();
   etna::Image *CurrentAARenderTarget();
   etna::Image *CurrentAADepthTex();
   vk::Rect2D CurrentAARect();
-  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage);
+  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
+  // @TODO(PKiyashko): this update should be less hacky, more centralized with others
+  void ResetTaaReprojectionCoeff();
+  void UpdateTaaReprojectionCoeff();
 
   // Cross-technique builders (@TODO(PKiyashko): In the future, I should do everything like this for mix-match)
   void RebuildCurrentForwardPipeline();

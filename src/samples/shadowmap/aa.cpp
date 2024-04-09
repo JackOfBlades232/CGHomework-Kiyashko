@@ -42,6 +42,23 @@ void SimpleShadowmapRender::AllocateAAResources()
     .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
     .samples    = vk::SampleCountFlagBits::e4
   });
+
+  const vk::Extent3D taaRtExtent{vk::Extent3D{m_width, m_height, 1}};
+
+  taaRts[0]  = m_context->createImage(etna::Image::CreateInfo
+  {
+    .extent     = taaRtExtent,
+    .name       = "taa_rt",
+    .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+  });
+  taaRts[1] = m_context->createImage(etna::Image::CreateInfo
+  {
+    .extent     = taaRtExtent,
+    .name       = "taa_prev_rt",
+    .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+  });
 }
 
 void SimpleShadowmapRender::DeallocateAAResources()
@@ -51,6 +68,31 @@ void SimpleShadowmapRender::DeallocateAAResources()
 
   msaaRt.reset();
   msaaDepth.reset();
+
+  taaRt->reset();
+  taaPrevRt->reset();
+}
+
+
+/// PIPELINES CREATION
+
+void SimpleShadowmapRender::LoadAAShaders()
+{
+  etna::create_program("taa_reprojection",
+    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/taa_simple.frag.spv"});
+}
+
+void SimpleShadowmapRender::SetupAAPipelines()
+{
+  auto& pipelineManager = etna::get_context().getPipelineManager();
+  m_taaReprojectionPipeline = pipelineManager.createGraphicsPipeline("taa_reprojection",
+    {
+      .fragmentShaderOutput =
+        {
+          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
+          .depthAttachmentFormat = vk::Format::eD32Sfloat
+        }
+    });
 }
 
 
@@ -64,6 +106,8 @@ etna::Image *SimpleShadowmapRender::CurrentAARenderTarget()
     return &ssaaRt;
   case eMsaa:
     return &msaaRt;
+  case eTaa:
+    return taaRt;
   case eNone:
     return nullptr;
   }
@@ -77,6 +121,7 @@ etna::Image *SimpleShadowmapRender::CurrentAADepthTex()
     return &ssaaDepth;
   case eMsaa:
     return &msaaDepth;
+  case eTaa:
   case eNone:
     return nullptr;
   }
@@ -89,6 +134,7 @@ vk::Rect2D SimpleShadowmapRender::CurrentAARect()
   case eSsaa:
     return vk::Rect2D{0, 0, m_width*2, m_height*2};
   case eMsaa:
+  case eTaa:
   case eNone:
     return vk::Rect2D{0, 0, m_width, m_height};
   }
@@ -97,7 +143,7 @@ vk::Rect2D SimpleShadowmapRender::CurrentAARect()
 
 /// COMMAND BUFFER FILLING
 
-void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage)
+void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
   switch (currentAATechnique)
   {
@@ -184,5 +230,41 @@ void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, V
       vk::ImageLayout::eColorAttachmentOptimal,
       vk::ImageAspectFlagBits::eColor);
   } break;
+
+  case eTaa:
+  {
+    auto programInfo = etna::get_shader_program("taa_reprojection");
+    auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff,
+      {
+        etna::Binding {0, constants.genBinding()}, 
+        etna::Binding {1, taaRt->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+        etna::Binding {2, taaPrevRt->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+        etna::Binding {3, mainViewDepth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
+      });
+    VkDescriptorSet vkSet = set.getVkSet();
+
+    etna::RenderTargetState renderTargets(a_cmdBuff, vk::Rect2D{0, 0, m_width, m_height},
+      {{.image = a_targetImage, .view = a_targetImageView}}, {});
+
+    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_taaReprojectionPipeline.getVkPipeline());
+    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_taaReprojectionPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+    vkCmdDraw(a_cmdBuff, 3, 1, 0, 0);
+    
+    // Next frame will be writing to next rt
+    std::swap(taaRt, taaPrevRt);
+  } break;
   }
+}
+
+void SimpleShadowmapRender::ResetTaaReprojectionCoeff()
+{
+  m_reprojectionCoeff = 0.0f;
+}
+
+void SimpleShadowmapRender::UpdateTaaReprojectionCoeff()
+{
+  if (m_reprojectionCoeff < EPSILON)
+    m_reprojectionCoeff = 1.0f;
 }

@@ -21,7 +21,7 @@ void SimpleShadowmapRender::AllocateResources()
     .extent = vk::Extent3D{m_width, m_height, 1},
     .name = "main_view_depth",
     .format = vk::Format::eD32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment
+    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
   });
 
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
@@ -81,6 +81,7 @@ void SimpleShadowmapRender::PreparePipelines()
 
   RebuildCurrentForwardPipeline();
   SetupShadowmapPipelines();
+  SetupAAPipelines();
 }
 
 void SimpleShadowmapRender::LoadShaders()
@@ -90,6 +91,7 @@ void SimpleShadowmapRender::LoadShaders()
   etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
 
   LoadShadowmapShaders();
+  LoadAAShaders();
 }
 
 void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
@@ -194,7 +196,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
   //// Apply aniti-aliasing
   //
-  RecordAAResolveCommands(a_cmdBuff, a_targetImage);
+  RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
     m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, vsmMomentMap /*shadowMap*/, defaultSampler);

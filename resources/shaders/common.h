@@ -48,13 +48,18 @@ using shader_bool  = LiteMath::uint;
 #endif
 
 
+// @TODO(PKiyashko): unify all places where matrices are used as push_constants and
+//                   from this ubo
 struct UniformParams
 {
+  shader_mat4  projViewMatrix;
   shader_mat4  lightMatrix;
   shader_vec3  lightPos;
   shader_float time;
   shader_vec3  baseColor;
   shader_bool  animateLightColor;
+  shader_mat4  prevProjViewMatrix;
+  shader_float reprojectionCoeff;
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

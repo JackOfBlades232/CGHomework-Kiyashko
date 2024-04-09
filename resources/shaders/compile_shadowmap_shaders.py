@@ -14,6 +14,7 @@ if __name__ == '__main__':
         "vsm_shadow.frag", 
         "vsm_shadowmap.frag", 
         "pcf_shadow.frag", 
+        "taa_simple.frag", 
     ]
 
     for shader in shader_list:

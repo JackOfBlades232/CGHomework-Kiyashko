@@ -31,6 +31,7 @@ void SimpleShadowmapRender::DoImGUI()
   {
     settingsAreDirty = false;
     RebuildCurrentForwardPipeline();
+    ResetTaaReprojectionCoeff();
   }
 
   // Rendering
@@ -74,7 +75,7 @@ void SimpleShadowmapRender::ShadowmapChoiceGUI()
 void SimpleShadowmapRender::AAChoiceGui()
 {
   // @TODO: taa
-  const char *items[]            = { "None", "SSAAx4", "MSAAx4" };
+  const char *items[]            = { "None", "SSAAx4", "MSAAx4", "TAA" };
   static const char *currentItem = items[currentAATechnique];
 
   ImGuiStyle &style = ImGui::GetStyle();

@@ -63,8 +63,8 @@ private:
 
   // Anti-aliasing
   etna::Image ssaaRt;
-  etna::Image msaaRt;
   etna::Image ssaaDepth;
+  etna::Image msaaRt;
   etna::Image msaaDepth;
   // @TODO: taa prev, cur
   // @TODO: deferred for taa
@@ -94,14 +94,11 @@ private:
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
 
-  etna::GraphicsPipeline m_basicForwardPipeline {};
+  etna::GraphicsPipeline m_forwardPipeline {};
+
+  // Shadow maps
   etna::GraphicsPipeline m_simpleShadowPipeline {};
-
-  etna::GraphicsPipeline m_vsmForwardPipeline   {};
   etna::GraphicsPipeline m_vsmShadowPipeline    {};
-
-  etna::GraphicsPipeline m_pcfForwardPipeline   {};
-
   etna::ComputePipeline  m_vsmFilteringPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
@@ -131,6 +128,7 @@ private:
 
     eShTechMax
   };
+  // @TODO(PKiyashko): add different scale settings (xN)
   enum AATechnique
   {
     eNone = 0,
@@ -140,18 +138,11 @@ private:
 
     eAATechMax
   };
-  enum AAScale // for ssaa and msaa
-  {
-    e2x = 2,
-    e4x = 4,
-    e8x = 8,
-
-    eAAScaleMax
-  };
 
   ShadowmapTechnique currentShadowmapTechnique = eVsm;
   AATechnique currentAATechnique               = eSsaa;
-  AAScale currentAAScale                       = e2x;
+
+  bool settingsAreDirty = false;
 
   struct InputControlMouseEtc
   {
@@ -185,7 +176,7 @@ private:
 
   void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
-  void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
+  void RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
 
   void LoadShaders();
 
@@ -212,22 +203,23 @@ private:
   void AllocateShadowmapResources();
   void DeallocateShadowmapResources();
   void LoadShadowmapShaders();
-  void SetupShadowmapPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc);
+  void SetupShadowmapPipelines();
   std::vector<etna::RenderTargetState::AttachmentParams> CurrentShadowColorAttachments();
   etna::GraphicsPipeline &CurrentShadowmapPipeline();
-  etna::GraphicsPipeline &CurrentForwardPipeline();
   etna::DescriptorSet CreateCurrentForwardDSet(VkCommandBuffer a_cmdBuff);
+  const char *CurrentShadowForwardProgramOverride();
   void RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff);
 
   // AA techniques
   void AllocateAAResources();
   void DeallocateAAResources();
-  void RecreateAATexOnScaleChange();
   etna::Image *CurrentAARenderTarget();
   etna::Image *CurrentAADepthTex();
   vk::Rect2D CurrentAARect();
-  void SetupAAPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc);
-  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
+  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage);
+
+  // Cross-technique builders (@TODO(PKiyashko): In the future, I should do everything like this for mix-match)
+  void RebuildCurrentForwardPipeline();
 };
 
 

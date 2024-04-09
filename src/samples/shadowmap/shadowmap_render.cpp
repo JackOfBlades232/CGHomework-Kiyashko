@@ -79,16 +79,8 @@ void SimpleShadowmapRender::PreparePipelines()
       .rect = { 0, 0, 512, 512 }, 
     });
 
-  etna::VertexShaderInputDescription sceneVertexInputDesc
-    {
-      .bindings = {etna::VertexShaderInputDescription::Binding
-        {
-          .byteStreamDescription = m_pScnMgr->GetVertexStreamDescription()
-        }}
-    };
-
-  SetupSimplePipeline(sceneVertexInputDesc);
-  SetupShadowmapPipelines(sceneVertexInputDesc);
+  RebuildCurrentForwardPipeline();
+  SetupShadowmapPipelines();
 }
 
 void SimpleShadowmapRender::LoadShaders()
@@ -100,12 +92,25 @@ void SimpleShadowmapRender::LoadShaders()
   LoadShadowmapShaders();
 }
 
-void SimpleShadowmapRender::SetupSimplePipeline(etna::VertexShaderInputDescription sceneVertexInputDesc)
+void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
 {
+  etna::VertexShaderInputDescription sceneVertexInputDesc {
+      .bindings = {etna::VertexShaderInputDescription::Binding{
+          .byteStreamDescription = m_pScnMgr->GetVertexStreamDescription()
+        }}
+    };
+
   auto& pipelineManager = etna::get_context().getPipelineManager();
-  m_basicForwardPipeline = pipelineManager.createGraphicsPipeline("simple_material",
+
+  vk::PipelineMultisampleStateCreateInfo multisampleConfig{
+    .rasterizationSamples = currentAATechnique == eMsaa ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1
+  };
+
+  const char *programFromShadow = CurrentShadowForwardProgramOverride();
+  m_forwardPipeline = pipelineManager.createGraphicsPipeline(programFromShadow ? programFromShadow : "simple_material",
     {
       .vertexShaderInput = sceneVertexInputDesc,
+      .multisampleConfig = multisampleConfig,
       .fragmentShaderOutput =
         {
           .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
@@ -117,7 +122,7 @@ void SimpleShadowmapRender::SetupSimplePipeline(etna::VertexShaderInputDescripti
 
 /// COMMAND BUFFER FILLING
 
-void SimpleShadowmapRender::DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout)
+void SimpleShadowmapRender::RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout)
 {
   VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT);
 
@@ -159,7 +164,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
     etna::RenderTargetState renderTargets(a_cmdBuff, { 0, 0, 2048, 2048 }, CurrentShadowColorAttachments(), {.image = shadowMap.get(), .view = shadowMap.getView({})});
 
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline.getVkPipeline());
-    DrawSceneCmd(a_cmdBuff, m_lightMatrix, shadowmapPipeline.getVkPipelineLayout());
+    RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline.getVkPipelineLayout());
   }
 
   //// Process shadowmap if need be (vsm)
@@ -169,7 +174,6 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   //// draw final scene to screen
   //
   {
-    etna::GraphicsPipeline &materialPipeline = CurrentForwardPipeline();
     etna::Image *aaRt                        = CurrentAARenderTarget();
     etna::Image *aaDepth                     = CurrentAADepthTex();
 
@@ -181,16 +185,16 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
       {{.image = aaRt ? (VkImage)aaRt->get() : a_targetImage, .view = aaRt ? (VkImageView)aaRt->getView({}) : a_targetImageView }},
       {.image = aaDepth ? aaDepth->get() : mainViewDepth.get(), .view = aaDepth ? aaDepth->getView({}) : mainViewDepth.getView({})});
 
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, materialPipeline.getVkPipeline());
+    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardPipeline.getVkPipeline());
     vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      materialPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+      m_forwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
-    DrawSceneCmd(a_cmdBuff, m_worldViewProj, materialPipeline.getVkPipelineLayout());
+    RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_forwardPipeline.getVkPipelineLayout());
   }
 
   //// Apply aniti-aliasing
   //
-  RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
+  RecordAAResolveCommands(a_cmdBuff, a_targetImage);
 
   if (m_input.drawFSQuad)
     m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, vsmMomentMap /*shadowMap*/, defaultSampler);

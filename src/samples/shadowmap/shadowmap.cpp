@@ -50,8 +50,14 @@ void SimpleShadowmapRender::LoadShadowmapShaders()
     {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
 }
 
-void SimpleShadowmapRender::SetupShadowmapPipelines(etna::VertexShaderInputDescription sceneVertexInputDesc)
+void SimpleShadowmapRender::SetupShadowmapPipelines()
 {
+  etna::VertexShaderInputDescription sceneVertexInputDesc{
+      .bindings = {etna::VertexShaderInputDescription::Binding{
+          .byteStreamDescription = m_pScnMgr->GetVertexStreamDescription()
+        }}
+    };
+
   auto& pipelineManager = etna::get_context().getPipelineManager();
   m_simpleShadowPipeline = pipelineManager.createGraphicsPipeline("simple_shadow",
     {
@@ -62,15 +68,6 @@ void SimpleShadowmapRender::SetupShadowmapPipelines(etna::VertexShaderInputDescr
         }
     });
 
-  m_vsmForwardPipeline = pipelineManager.createGraphicsPipeline("vsm_material",
-    {
-      .vertexShaderInput = sceneVertexInputDesc,
-      .fragmentShaderOutput =
-        {
-          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
-          .depthAttachmentFormat = vk::Format::eD32Sfloat
-        }
-    });
   m_vsmShadowPipeline = pipelineManager.createGraphicsPipeline("vsm_shadow",
     {
       .vertexShaderInput = sceneVertexInputDesc,
@@ -81,16 +78,6 @@ void SimpleShadowmapRender::SetupShadowmapPipelines(etna::VertexShaderInputDescr
         }
     });
   m_vsmFilteringPipeline = pipelineManager.createComputePipeline("vsm_filtering", {});
-
-  m_pcfForwardPipeline = pipelineManager.createGraphicsPipeline("pcf_material",
-    {
-      .vertexShaderInput = sceneVertexInputDesc,
-      .fragmentShaderOutput =
-        {
-          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
-          .depthAttachmentFormat = vk::Format::eD32Sfloat
-        }
-    });
 }
 
 
@@ -120,16 +107,16 @@ etna::GraphicsPipeline &SimpleShadowmapRender::CurrentShadowmapPipeline()
   }
 }
 
-etna::GraphicsPipeline &SimpleShadowmapRender::CurrentForwardPipeline()
+const char *SimpleShadowmapRender::CurrentShadowForwardProgramOverride()
 {
   switch (currentShadowmapTechnique)
   {
   case eSimple:
-    return m_basicForwardPipeline;
-  case eVsm:
-    return m_vsmForwardPipeline;
+    return nullptr;
   case ePcf:
-    return m_pcfForwardPipeline;
+    return "pcf_material";
+  case eVsm:
+    return "vsm_material";
   }
 }
 

@@ -96,6 +96,7 @@ private:
 
   // For taa reprojection
   float4x4 m_prevProjViewMatrix;
+  float currentReprojectionCoeff = 0.75f;
   bool resetReprojection = true;
 
   UniformParams m_uniforms {};
@@ -146,13 +147,13 @@ private:
     eNone = 0,
     eSsaa,
     eMsaa,
-    eTaa,
+    eTaa, // @TODO(PKiyashko): it is not too good as of now
 
     eAATechMax
   };
 
-  ShadowmapTechnique currentShadowmapTechnique = eSimple;//eVsm;
-  AATechnique currentAATechnique               = eTaa;//eMsaa;
+  ShadowmapTechnique currentShadowmapTechnique = eVsm;
+  AATechnique currentAATechnique               = eMsaa;
 
   bool settingsAreDirty = false;
 

@@ -48,6 +48,7 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.time               = a_time;
   m_uniforms.prevProjViewMatrix = m_prevProjViewMatrix;
   m_uniforms.reprojectionCoeff  = CurrentTaaReprojectionCoeff();
+  ++m_uniforms.frameCounter;
 
   memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
 }

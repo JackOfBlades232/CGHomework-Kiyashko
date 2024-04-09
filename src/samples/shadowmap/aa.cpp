@@ -311,6 +311,6 @@ void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, V
 
 float SimpleShadowmapRender::CurrentTaaReprojectionCoeff()
 {
-  return resetReprojection ? 0.0f : 0.9f;
+  return resetReprojection ? 0.0f : currentReprojectionCoeff;
 }
 

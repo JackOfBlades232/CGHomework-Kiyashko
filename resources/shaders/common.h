@@ -60,6 +60,7 @@ struct UniformParams
   shader_bool  animateLightColor;
   shader_mat4  prevProjViewMatrix;
   shader_float reprojectionCoeff;
+  shader_uint  frameCounter;
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

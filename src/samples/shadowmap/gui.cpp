@@ -74,8 +74,7 @@ void SimpleShadowmapRender::ShadowmapChoiceGUI()
 
 void SimpleShadowmapRender::AAChoiceGui()
 {
-  // @TODO: taa
-  const char *items[]            = { "None", "SSAAx4", "MSAAx4", "TAA" };
+  const char *items[]            = { "None", "SSAAx4", "MSAAx4", "TAA (attempt)" };
   static const char *currentItem = items[currentAATechnique];
 
   ImGuiStyle &style = ImGui::GetStyle();
@@ -107,4 +106,9 @@ void SimpleShadowmapRender::AAChoiceGui()
 
   ImGui::SameLine(0, style.ItemInnerSpacing.x);
   ImGui::Text("Anti-aliasing technique");
+
+  if (currentAATechnique == eTaa)
+  {
+    ImGui::SliderFloat("TAA reprojection coeff", &currentReprojectionCoeff, 0.0f, 1.0f);
+  }
 }

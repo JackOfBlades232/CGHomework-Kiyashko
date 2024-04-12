@@ -26,6 +26,27 @@ void SimpleShadowmapRender::DeallocateDeferredResources()
 // @TODO(PKiyashko): pull out this generic pipeline creation to some utils thing.
 void SimpleShadowmapRender::LoadDeferredShaders()
 {
+  etna::create_program("simple_resolve",
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
+    });
+  etna::create_program("shadow_resolve",
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/shadow_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
+    });
+  etna::create_program("vsm_resolve",
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
+    });
+  etna::create_program("pcf_resolve",
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
+    });
+
   etna::create_program("deferred_gpass", 
     {
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_gpass.frag.spv", 
@@ -55,14 +76,12 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
 
 void SimpleShadowmapRender::RebuildCurrentDeferredResolvePipeline()
 {
-  /*
   m_pGbufferResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_resolve.frag.spv",
-      .programName    = "deferred_resolve",
-      .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .extent         = vk::Extent2D{m_width, m_height}
+      .programName   = CurrentRTProgramName(),
+      .programExists = true,
+      .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .extent        = vk::Extent2D{m_width, m_height}
     });
-    */
 }
 
 
@@ -81,6 +100,14 @@ void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 
 void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
-  m_pGbufferResolver->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, CurrentRTBindings());
+  auto bindings = CurrentRTBindings();
+
+  // Gbuffer to dSet 1
+  bindings.push_back({ 
+    etna::Binding{ 0, gbuffer.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
+    etna::Binding{ 1, gbuffer.depth->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
+    });
+
+  m_pGbufferResolver->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, std::move(bindings));
 }
 

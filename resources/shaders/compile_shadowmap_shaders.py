@@ -9,9 +9,9 @@ if __name__ == '__main__':
         "simple.vert", 
         "quad.vert", 
         "quad.frag", 
+        "simple.frag", 
         "simple_shadow.frag", 
         "simple_gpass.frag", 
-        "simple_resolve.frag", 
         "vsm_filter.comp",
         "vsm_shadow.frag", 
         "vsm_shadowmap.frag", 
@@ -19,6 +19,23 @@ if __name__ == '__main__':
         "taa_simple.frag", 
     ]
 
+    # @TODO(PKiyashko): a more comprehensive naming rule
+    deferred_resolve_shader_list = [
+        "simple.frag", 
+        "simple_shadow.frag", 
+        "vsm_shadow.frag", 
+        "pcf_shadow.frag", 
+    ]
+    deferred_resolve_output_list = [
+        "simple_resolve.frag", 
+        "shadow_resolve.frag", 
+        "vsm_resolve.frag", 
+        "pcf_resolve.frag", 
+    ]
+
     for shader in shader_list:
-        subprocess.run([glslang_cmd, "-V", shader, "-o", "{}.spv".format(shader)])
+        subprocess.run([glslang_cmd, "-V", shader, "-DUSE_GBUFFER=0", "-o", "{}.spv".format(shader)])
+
+    for shader, output in zip(deferred_resolve_shader_list, deferred_resolve_output_list):
+        subprocess.run([glslang_cmd, "-V", shader, "-DUSE_GBUFFER=1", "-o", "{}.spv".format(output)])
 

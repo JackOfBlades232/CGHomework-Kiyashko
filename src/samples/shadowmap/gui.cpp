@@ -52,6 +52,8 @@ void SimpleShadowmapRender::DeferredChoiceGUI()
       if (ImGui::Selectable(items[i], selected))
       {
         currentItem = items[i];
+        if (useDeferredRendering != (i == 1))
+          settingsAreDirty = true;
         useDeferredRendering = i == 1;
       }
       if (selected)

@@ -87,8 +87,8 @@ void SimpleShadowmapRender::DeallocateAAResources()
 void SimpleShadowmapRender::SetupAAPipelines()
 {
   m_pTaaReprojector = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/taa_simple.frag.spv",
       .programName    = "taa_simple_reprojection",
+      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/taa_simple.frag.spv",
       .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .extent         = vk::Extent2D{m_width, m_height}
     });

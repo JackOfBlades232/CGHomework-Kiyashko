@@ -8,10 +8,15 @@
 PostfxRenderer::PostfxRenderer(CreateInfo info) 
 {
   m_extent = info.extent;
-  m_programId = etna::create_program(info.programName, {
-    VK_GRAPHICS_BASIC_ROOT "/resources/shaders/quad3_vert.vert.spv",
-    info.fragShaderPath
-  });
+  if (info.programExists)
+    m_programId = etna::get_shader_program(info.programName).getId();
+  else
+  {
+    m_programId = etna::create_program(info.programName, {
+      VK_GRAPHICS_BASIC_ROOT "/resources/shaders/quad3_vert.vert.spv",
+      info.fragShaderPath
+    });
+  }
 
   auto &pipelineManager = etna::get_context().getPipelineManager();
   m_pipeline = pipelineManager.createGraphicsPipeline(info.programName,

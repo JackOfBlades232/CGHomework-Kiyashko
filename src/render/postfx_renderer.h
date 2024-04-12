@@ -13,8 +13,9 @@ class PostfxRenderer
 public:
   struct CreateInfo
   {
-    std::string fragShaderPath = nullptr;
-    std::string programName = nullptr;
+    std::string programName;
+    bool programExists = false;
+    std::string fragShaderPath;
     vk::Format format = vk::Format::eUndefined;
     vk::SampleCountFlagBits sampleCountFlags = vk::SampleCountFlagBits::e1;
     vk::Extent2D extent = {};

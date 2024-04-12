@@ -18,6 +18,9 @@ set(RENDER_SOURCE
         draw.cpp
         present.cpp
         gui.cpp
+        common.cpp
+        forward.cpp
+        deferred.cpp
         shadowmap.cpp
         aa.cpp
 )

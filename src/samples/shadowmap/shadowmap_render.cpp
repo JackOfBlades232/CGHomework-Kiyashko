@@ -86,38 +86,9 @@ void SimpleShadowmapRender::PreparePipelines()
 
 void SimpleShadowmapRender::LoadShaders()
 {
-  etna::create_program("simple_material",
-    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
-  etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
-
+  LoadForwardShaders();
+  LoadDeferredShaders();
   LoadShadowmapShaders();
-}
-
-void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
-{
-  etna::VertexShaderInputDescription sceneVertexInputDesc {
-      .bindings = {etna::VertexShaderInputDescription::Binding{
-          .byteStreamDescription = m_pScnMgr->GetVertexStreamDescription()
-        }}
-    };
-
-  auto& pipelineManager = etna::get_context().getPipelineManager();
-
-  vk::PipelineMultisampleStateCreateInfo multisampleConfig{
-    .rasterizationSamples = currentAATechnique == eMsaa ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1
-  };
-
-  const char *programFromShadow = CurrentShadowForwardProgramOverride();
-  m_forwardPipeline = pipelineManager.createGraphicsPipeline(programFromShadow ? programFromShadow : "simple_material",
-    {
-      .vertexShaderInput = sceneVertexInputDesc,
-      .multisampleConfig = multisampleConfig,
-      .fragmentShaderOutput =
-        {
-          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
-          .depthAttachmentFormat = vk::Format::eD32Sfloat
-        }
-    });
 }
 
 

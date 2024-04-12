@@ -41,13 +41,14 @@ void SimpleShadowmapRender::DeallocateShadowmapResources()
 
 void SimpleShadowmapRender::LoadShadowmapShaders()
 {
-  etna::create_program("vsm_material",
-    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+  etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+
   etna::create_program("vsm_shadow",
-    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadowmap.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadowmap.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"
+    });
   etna::create_program("vsm_filtering", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_filter.comp.spv"});
-  etna::create_program("pcf_material",
-    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_shadow.frag.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
 }
 
 void SimpleShadowmapRender::SetupShadowmapPipelines()

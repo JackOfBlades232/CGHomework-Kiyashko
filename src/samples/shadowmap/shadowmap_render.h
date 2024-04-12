@@ -57,6 +57,13 @@ private:
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
+  // Deferred
+  struct
+  {
+    etna::Image normals; 
+    etna::Image *depth;
+  } gbuffer;
+
   // Shadow maps
   etna::Image shadowMap;
   etna::Image vsmMomentMap;
@@ -103,7 +110,15 @@ private:
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
 
+  // Forward
   etna::GraphicsPipeline m_forwardPipeline {};
+
+  // Deferred
+  etna::GraphicsPipeline m_geometryPipeline {};
+  std::unique_ptr<PostfxRenderer> m_pGbufferSimpleResolver {};
+  std::unique_ptr<PostfxRenderer> m_pGbufferShadowResolver {};
+  std::unique_ptr<PostfxRenderer> m_pGbufferVsmResolver {};
+  std::unique_ptr<PostfxRenderer> m_pGbufferPcfResolver {};
 
   // Shadow maps
   etna::GraphicsPipeline m_simpleShadowPipeline {};
@@ -212,6 +227,20 @@ private:
   void ShadowmapChoiceGUI();
   void AAChoiceGui();
 
+  // Forward shading
+  void LoadForwardShaders();
+  void RebuildCurrentForwardPipeline();
+  void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff);
+
+  // Deferred shading
+  void AllocateDeferredResources();
+  void DeallocateDeferredResources();
+  void LoadDeferredShaders();
+  void SetupDeferredPipelines();
+  void RebuildCurrentDeferredPipeline();
+  void RecordGeomPassCommands(VkCommandBuffer a_cmdBuff);
+  void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff);
+
   // Shadowmap techniques
   void AllocateShadowmapResources();
   void DeallocateShadowmapResources();
@@ -233,9 +262,6 @@ private:
   void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
   // @TODO(PKiyashko): this update should be less hacky, more centralized with others
   float CurrentTaaReprojectionCoeff();
-
-  // Cross-technique builders (@TODO(PKiyashko): In the future, I should do everything like this for mix-match)
-  void RebuildCurrentForwardPipeline();
 };
 
 

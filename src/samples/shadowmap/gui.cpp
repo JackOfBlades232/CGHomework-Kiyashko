@@ -66,7 +66,7 @@ void SimpleShadowmapRender::DeferredChoiceGUI()
 
 void SimpleShadowmapRender::ShadowmapChoiceGUI()
 {
-  const char *items[eShTechMax]  = { "Simple", "VSM", "PCF" };
+  const char *items[eShTechMax]  = { "None", "Simple", "VSM", "PCF" };
   static const char *currentItem = items[currentShadowmapTechnique];
 
   ImGuiStyle &style = ImGui::GetStyle();

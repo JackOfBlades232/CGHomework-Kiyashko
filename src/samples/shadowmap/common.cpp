@@ -46,8 +46,11 @@ const char *SimpleShadowmapRender::CurrentRTProgramName()
 {
   switch (currentShadowmapTechnique)
   {
-  case eSimple:
+  case eShTechNone:
     return useDeferredRendering ? "simple_resolve" : "simple_forward";
+    break;
+  case eSimple:
+    return useDeferredRendering ? "shadow_resolve" : "shadow_forward";
     break;
   case ePcf:
     return useDeferredRendering ? "pcf_resolve" :  "pcf_forward";
@@ -62,14 +65,10 @@ std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings
 {
   switch (currentShadowmapTechnique)
   {
-  case eVsm:
-  {
-    return 
-    {{
-      etna::Binding{ 0, constants.genBinding() }, 
-      etna::Binding{ 1, vsmSmoothMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }
-    }};
-  } break;
+  case eShTechNone:
+    return {{ etna::Binding{ 0, constants.genBinding() } }};
+    break;
+
   case eSimple: 
   case ePcf:
   {
@@ -79,9 +78,18 @@ std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings
       etna::Binding{ 1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
     }};
   } break;
+
+  case eVsm:
+  {
+    return 
+    {{
+      etna::Binding{ 0, constants.genBinding() }, 
+      etna::Binding{ 1, vsmSmoothMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }
+    }};
+  } break;
   }
 
-  return {{}};
+  return {};
 }
 
 

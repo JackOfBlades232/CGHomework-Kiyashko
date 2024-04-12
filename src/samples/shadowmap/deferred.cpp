@@ -55,12 +55,14 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
 
 void SimpleShadowmapRender::RebuildCurrentDeferredResolvePipeline()
 {
+  /*
   m_pGbufferResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
       .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_resolve.frag.spv",
       .programName    = "deferred_resolve",
       .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .extent         = vk::Extent2D{m_width, m_height}
     });
+    */
 }
 
 

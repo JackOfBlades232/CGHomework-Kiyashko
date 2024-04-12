@@ -86,25 +86,28 @@ void SimpleShadowmapRender::SetupShadowmapPipelines()
 
 void SimpleShadowmapRender::RecordShadowPassCommands(VkCommandBuffer a_cmdBuff)
 {
-    etna::GraphicsPipeline *shadowmapPipeline = nullptr;
-    std::vector<etna::RenderTargetState::AttachmentParams> colorAttachments{};
-    switch (currentShadowmapTechnique)
-    {
-    case eSimple:
-    case ePcf:
-      shadowmapPipeline = &m_simpleShadowPipeline;
-      break;
-    case eVsm:
-      shadowmapPipeline = &m_vsmShadowPipeline;
-      colorAttachments  = {{.image = vsmMomentMap.get(), .view = vsmMomentMap.getView({})}};
-      break;
-    }
+  if (currentShadowmapTechnique == eShTechNone) 
+    return;
 
-    etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, 2048, 2048},
-      colorAttachments, {.image = shadowMap.get(), .view = shadowMap.getView({})});
+  etna::GraphicsPipeline *shadowmapPipeline = nullptr;
+  std::vector<etna::RenderTargetState::AttachmentParams> colorAttachments{};
+  switch (currentShadowmapTechnique)
+  {
+  case eSimple:
+  case ePcf:
+    shadowmapPipeline = &m_simpleShadowPipeline;
+    break;
+  case eVsm:
+    shadowmapPipeline = &m_vsmShadowPipeline;
+    colorAttachments  = {{.image = vsmMomentMap.get(), .view = vsmMomentMap.getView({})}};
+    break;
+  }
 
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline->getVkPipeline());
-    RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());
+  etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, 2048, 2048},
+    colorAttachments, {.image = shadowMap.get(), .view = shadowMap.getView({})});
+
+  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline->getVkPipeline());
+  RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());
 }
 
 void SimpleShadowmapRender::RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff)

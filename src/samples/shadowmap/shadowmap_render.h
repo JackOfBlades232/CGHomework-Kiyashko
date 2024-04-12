@@ -145,7 +145,8 @@ private:
   
   enum ShadowmapTechnique
   {
-    eSimple = 0,
+    eShTechNone = 0,
+    eSimple,
     eVsm,
     ePcf,
     // @TODO(PKiyashko): esm (someday)
@@ -156,7 +157,7 @@ private:
   // @TODO(PKiyashko): proper taa with motion vectors and deferred
   enum AATechnique
   {
-    eNone = 0,
+    eAATechNone = 0,
     eSsaa,
     eMsaa,
     eTaa, // @TODO(PKiyashko): it is not too good as of now
@@ -166,8 +167,9 @@ private:
 
   bool useDeferredRendering                    = false;
   //ShadowmapTechnique currentShadowmapTechnique = eVsm;
-  ShadowmapTechnique currentShadowmapTechnique = eSimple;
-  AATechnique currentAATechnique               = eMsaa;
+  ShadowmapTechnique currentShadowmapTechnique = eShTechNone;
+  //AATechnique currentAATechnique               = eMsaa;
+  AATechnique currentAATechnique               = eAATechNone;
 
   bool settingsAreDirty = false;
 

@@ -91,7 +91,6 @@ void SimpleShadowmapRender::LoadShaders()
   etna::create_program("simple_shadow", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"});
 
   LoadShadowmapShaders();
-  LoadAAShaders();
 }
 
 void SimpleShadowmapRender::RebuildCurrentForwardPipeline()

@@ -84,22 +84,13 @@ void SimpleShadowmapRender::DeallocateAAResources()
 
 /// PIPELINES CREATION
 
-void SimpleShadowmapRender::LoadAAShaders()
-{
-  etna::create_program("taa_reprojection",
-    {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv", VK_GRAPHICS_BASIC_ROOT"/resources/shaders/taa_simple.frag.spv"});
-}
-
 void SimpleShadowmapRender::SetupAAPipelines()
 {
-  auto& pipelineManager = etna::get_context().getPipelineManager();
-  m_taaReprojectionPipeline = pipelineManager.createGraphicsPipeline("taa_reprojection",
-    {
-      .fragmentShaderOutput =
-        {
-          .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
-          .depthAttachmentFormat = vk::Format::eD32Sfloat
-        }
+  m_pTaaReprojector = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
+      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/taa_simple.frag.spv",
+      .programName    = "taa_simple_reprojection",
+      .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .extent         = vk::Extent2D{m_width, m_height}
     });
 }
 
@@ -242,26 +233,13 @@ void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, V
 
   case eTaa:
   {
-    {
-      auto programInfo = etna::get_shader_program("taa_reprojection");
-      auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff,
-        {
-          etna::Binding {0, constants.genBinding()}, 
-          etna::Binding {1, taaRt.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
-          etna::Binding {2, taaPrevFrame->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
-          etna::Binding {3, mainViewDepth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
-        });
-      VkDescriptorSet vkSet = set.getVkSet();
-
-      etna::RenderTargetState renderTargets(a_cmdBuff, vk::Rect2D{0, 0, m_width, m_height}, 
-        {{.image = taaCurFrame->get(), .view = taaCurFrame->getView({})}}, {});
-
-      vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_taaReprojectionPipeline.getVkPipeline());
-      vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_taaReprojectionPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
-
-      vkCmdDraw(a_cmdBuff, 3, 1, 0, 0);
-    }
+    m_pTaaReprojector->RecordCommands(a_cmdBuff, taaCurFrame->get(), taaCurFrame->getView({}), 
+      {{
+        etna::Binding {0, constants.genBinding()}, 
+        etna::Binding {1, taaRt.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+        etna::Binding {2, taaPrevFrame->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+        etna::Binding {3, mainViewDepth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
+      }});
 
     etna::set_state(a_cmdBuff, taaCurFrame->get(), 
       vk::PipelineStageFlagBits2::eTransfer,

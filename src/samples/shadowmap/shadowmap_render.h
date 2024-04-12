@@ -4,6 +4,7 @@
 #include "../../render/scene_mgr.h"
 #include "../../render/render_common.h"
 #include "../../render/quad_renderer.h"
+#include "../../render/postfx_renderer.h"
 #include "../../../resources/shaders/common.h"
 #include "etna/GraphicsPipeline.hpp"
 #include <geom/vk_mesh.h>
@@ -109,8 +110,8 @@ private:
   etna::GraphicsPipeline m_vsmShadowPipeline    {};
   etna::ComputePipeline  m_vsmFilteringPipeline {};
 
-  // Anti-aliasing @TODO(PKiyashko): proper postfx renderer for such stuff
-  etna::GraphicsPipeline m_taaReprojectionPipeline {};
+  // Anti-aliasing
+  std::unique_ptr<PostfxRenderer> m_pTaaReprojector;
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -193,7 +194,6 @@ private:
 
   void LoadShaders();
 
-  void SetupSimplePipeline(etna::VertexShaderInputDescription sceneVertexInputDesc);
   void RecreateSwapChain();
 
   void UpdateUniformBuffer(float a_time);
@@ -226,7 +226,6 @@ private:
   // AA techniques
   void AllocateAAResources();
   void DeallocateAAResources();
-  void LoadAAShaders();
   void SetupAAPipelines();
   etna::Image *CurrentAARenderTarget();
   etna::Image *CurrentAADepthTex();

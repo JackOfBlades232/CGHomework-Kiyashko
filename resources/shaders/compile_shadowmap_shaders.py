@@ -10,6 +10,8 @@ if __name__ == '__main__':
         "quad.vert", 
         "quad.frag", 
         "simple_shadow.frag", 
+        "simple_gpass.frag", 
+        "simple_resolve.frag", 
         "vsm_filter.comp",
         "vsm_shadow.frag", 
         "vsm_shadowmap.frag", 

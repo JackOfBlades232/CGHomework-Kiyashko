@@ -77,7 +77,7 @@ void SimpleShadowmapRender::ProcessInput(const AppInput &input)
 
     for (uint32_t i = 0; i < m_framesInFlight; ++i)
     {
-      BuildCommandBufferSimple(m_cmdBuffersDrawMain[i], m_swapchain.GetAttachment(i).image, m_swapchain.GetAttachment(i).view);
+      BuildCommandBuffer(m_cmdBuffersDrawMain[i], m_swapchain.GetAttachment(i).image, m_swapchain.GetAttachment(i).view);
     }
   }
 }

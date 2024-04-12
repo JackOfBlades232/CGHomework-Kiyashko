@@ -82,71 +82,30 @@ void SimpleShadowmapRender::SetupShadowmapPipelines()
 }
 
 
-/// TECHNIQUE CHOICE
-
-std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::CurrentShadowColorAttachments()
-{
-  switch (currentShadowmapTechnique)
-  {
-  case eSimple:
-  case ePcf:
-    return {};
-  case eVsm:
-    return {{.image = vsmMomentMap.get(), .view = vsmMomentMap.getView({})}};
-  }
-}
-
-etna::GraphicsPipeline &SimpleShadowmapRender::CurrentShadowmapPipeline()
-{
-  switch (currentShadowmapTechnique)
-  {
-  case eSimple:
-  case ePcf:
-    return m_simpleShadowPipeline;
-  case eVsm:
-    return m_vsmShadowPipeline;
-  }
-}
-
-const char *SimpleShadowmapRender::CurrentShadowForwardProgramOverride()
-{
-  switch (currentShadowmapTechnique)
-  {
-  case eSimple:
-    return nullptr;
-  case ePcf:
-    return "pcf_material";
-  case eVsm:
-    return "vsm_material";
-  }
-}
-
-etna::DescriptorSet SimpleShadowmapRender::CreateCurrentForwardDSet(VkCommandBuffer a_cmdBuff)
-{
-  switch (currentShadowmapTechnique)
-  {
-  case eSimple: 
-  case ePcf:
-  {
-    auto materialInfo = etna::get_shader_program("simple_material");
-    return std::move(etna::create_descriptor_set(materialInfo.getDescriptorLayoutId(0), a_cmdBuff, {
-      etna::Binding{ 0, constants.genBinding() }, 
-      etna::Binding{ 1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
-    }));
-  }
-  case eVsm:
-  {
-    auto materialInfo = etna::get_shader_program("vsm_material");
-    return std::move(etna::create_descriptor_set(materialInfo.getDescriptorLayoutId(0), a_cmdBuff, {
-      etna::Binding{ 0, constants.genBinding() }, 
-      etna::Binding{ 1, vsmSmoothMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }
-    }));
-  }
-  }
-}
-
-
 /// COMMAND BUFFER FILLING
+
+void SimpleShadowmapRender::RecordShadowPassCommands(VkCommandBuffer a_cmdBuff)
+{
+    etna::GraphicsPipeline *shadowmapPipeline = nullptr;
+    std::vector<etna::RenderTargetState::AttachmentParams> colorAttachments{};
+    switch (currentShadowmapTechnique)
+    {
+    case eSimple:
+    case ePcf:
+      shadowmapPipeline = &m_simpleShadowPipeline;
+      break;
+    case eVsm:
+      shadowmapPipeline = &m_vsmShadowPipeline;
+      colorAttachments  = {{.image = vsmMomentMap.get(), .view = vsmMomentMap.getView({})}};
+      break;
+    }
+
+    etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, 2048, 2048},
+      colorAttachments, {.image = shadowMap.get(), .view = shadowMap.getView({})});
+
+    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline->getVkPipeline());
+    RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());
+}
 
 void SimpleShadowmapRender::RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff)
 {

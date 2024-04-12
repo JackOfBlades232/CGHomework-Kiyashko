@@ -79,9 +79,12 @@ void SimpleShadowmapRender::PreparePipelines()
       .rect = { 0, 0, 512, 512 }, 
     });
 
-  RebuildCurrentForwardPipeline();
+  SetupDeferredPipelines();
   SetupShadowmapPipelines();
   SetupAAPipelines();
+
+  RebuildCurrentForwardPipeline();
+  RebuildCurrentDeferredResolvePipeline();
 }
 
 void SimpleShadowmapRender::LoadShaders()
@@ -94,31 +97,7 @@ void SimpleShadowmapRender::LoadShaders()
 
 /// COMMAND BUFFER FILLING
 
-void SimpleShadowmapRender::RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout)
-{
-  VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT);
-
-  VkDeviceSize zero_offset = 0u;
-  VkBuffer vertexBuf = m_pScnMgr->GetVertexBuffer();
-  VkBuffer indexBuf  = m_pScnMgr->GetIndexBuffer();
-  
-  vkCmdBindVertexBuffers(a_cmdBuff, 0, 1, &vertexBuf, &zero_offset);
-  vkCmdBindIndexBuffer(a_cmdBuff, indexBuf, 0, VK_INDEX_TYPE_UINT32);
-
-  pushConst2M.projView = a_wvp;
-  for (uint32_t i = 0; i < m_pScnMgr->InstancesNum(); ++i)
-  {
-    auto inst         = m_pScnMgr->GetInstanceInfo(i);
-    pushConst2M.model = m_pScnMgr->GetInstanceMatrix(i);
-    vkCmdPushConstants(a_cmdBuff, a_pipelineLayout,
-      stageFlags, 0, sizeof(pushConst2M), &pushConst2M);
-
-    auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
-    vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
-  }
-}
-
-void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
+void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
   vkResetCommandBuffer(a_cmdBuff, 0);
 
@@ -128,41 +107,20 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
 
   VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
 
-  //// draw scene to shadowmap
-  //
-  {
-    etna::GraphicsPipeline &shadowmapPipeline = CurrentShadowmapPipeline();
-
-    etna::RenderTargetState renderTargets(a_cmdBuff, { 0, 0, 2048, 2048 }, CurrentShadowColorAttachments(), {.image = shadowMap.get(), .view = shadowMap.getView({})});
-
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline.getVkPipeline());
-    RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline.getVkPipelineLayout());
-  }
-
-  //// Process shadowmap if need be (vsm)
-  //
+  // Shadowmap
+  RecordShadowPassCommands(a_cmdBuff);
   RecordShadowmapProcessingCommands(a_cmdBuff);
+
+  // Deferred gpass
+  if (useDeferredRendering)
+    RecordGeomPassCommands(a_cmdBuff);
 
   //// draw final scene to screen
   //
-  {
-    etna::Image *aaRt                        = CurrentAARenderTarget();
-    etna::Image *aaDepth                     = CurrentAADepthTex();
-
-    auto set = std::move(CreateCurrentForwardDSet(a_cmdBuff));
-    VkDescriptorSet vkSet = set.getVkSet();
-
-    etna::RenderTargetState renderTargets(a_cmdBuff, 
-      aaRt ? CurrentAARect() : vk::Rect2D{0, 0, m_width, m_height},
-      {{.image = aaRt ? (VkImage)aaRt->get() : a_targetImage, .view = aaRt ? (VkImageView)aaRt->getView({}) : a_targetImageView }},
-      {.image = aaDepth ? aaDepth->get() : mainViewDepth.get(), .view = aaDepth ? aaDepth->getView({}) : mainViewDepth.getView({})});
-
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardPipeline.getVkPipeline());
-    vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      m_forwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
-
-    RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_forwardPipeline.getVkPipelineLayout());
-  }
+  if (useDeferredRendering)
+    RecordResolvePassCommands(a_cmdBuff, a_targetImage, a_targetImageView);
+  else
+    RecordForwardPassCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   //// Apply aniti-aliasing
   //

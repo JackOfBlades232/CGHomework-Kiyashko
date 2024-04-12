@@ -115,10 +115,7 @@ private:
 
   // Deferred
   etna::GraphicsPipeline m_geometryPipeline {};
-  std::unique_ptr<PostfxRenderer> m_pGbufferSimpleResolver {};
-  std::unique_ptr<PostfxRenderer> m_pGbufferShadowResolver {};
-  std::unique_ptr<PostfxRenderer> m_pGbufferVsmResolver {};
-  std::unique_ptr<PostfxRenderer> m_pGbufferPcfResolver {};
+  std::unique_ptr<PostfxRenderer> m_pGbufferResolver {};
 
   // Shadow maps
   etna::GraphicsPipeline m_simpleShadowPipeline {};
@@ -156,7 +153,6 @@ private:
     eShTechMax
   };
   // @TODO(PKiyashko): add different scale settings (xN)
-  // @TODO(PKiyashko): deferred
   // @TODO(PKiyashko): proper taa with motion vectors and deferred
   enum AATechnique
   {
@@ -168,7 +164,9 @@ private:
     eAATechMax
   };
 
-  ShadowmapTechnique currentShadowmapTechnique = eVsm;
+  bool useDeferredRendering                    = false;
+  //ShadowmapTechnique currentShadowmapTechnique = eVsm;
+  ShadowmapTechnique currentShadowmapTechnique = eSimple;
   AATechnique currentAATechnique               = eMsaa;
 
   bool settingsAreDirty = false;
@@ -201,11 +199,8 @@ private:
   
   } m_light;
  
-  void DrawFrameSimple(bool draw_gui);
-
-  void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
-
-  void RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
+  void DrawFrame(bool draw_gui);
+  void BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
   void LoadShaders();
 
@@ -224,41 +219,45 @@ private:
   void ResetPresentStuff();
 
   void DoImGUI();
+  void DeferredChoiceGUI();
   void ShadowmapChoiceGUI();
   void AAChoiceGui();
+
+  // Common
+  std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments(
+    VkImage a_targetImage, VkImageView a_targetImageView);
+  etna::RenderTargetState::AttachmentParams CurrentRTDepthAttachment();
+  vk::Rect2D CurrentRTRect();
+  const char *CurrentRTProgramName();
+  std::vector<std::vector<etna::Binding>> CurrentRTBindings();
+  void RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
 
   // Forward shading
   void LoadForwardShaders();
   void RebuildCurrentForwardPipeline();
-  void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff);
+  void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
   // Deferred shading
   void AllocateDeferredResources();
   void DeallocateDeferredResources();
   void LoadDeferredShaders();
   void SetupDeferredPipelines();
-  void RebuildCurrentDeferredPipeline();
+  void RebuildCurrentDeferredResolvePipeline();
   void RecordGeomPassCommands(VkCommandBuffer a_cmdBuff);
-  void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff);
+  void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
   // Shadowmap techniques
   void AllocateShadowmapResources();
   void DeallocateShadowmapResources();
   void LoadShadowmapShaders();
   void SetupShadowmapPipelines();
-  std::vector<etna::RenderTargetState::AttachmentParams> CurrentShadowColorAttachments();
-  etna::GraphicsPipeline &CurrentShadowmapPipeline();
-  etna::DescriptorSet CreateCurrentForwardDSet(VkCommandBuffer a_cmdBuff);
-  const char *CurrentShadowForwardProgramOverride();
+  void RecordShadowPassCommands(VkCommandBuffer a_cmdBuff);
   void RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff);
 
   // AA techniques
   void AllocateAAResources();
   void DeallocateAAResources();
   void SetupAAPipelines();
-  etna::Image *CurrentAARenderTarget();
-  etna::Image *CurrentAADepthTex();
-  vk::Rect2D CurrentAARect();
   void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
   // @TODO(PKiyashko): this update should be less hacky, more centralized with others
   float CurrentTaaReprojectionCoeff();

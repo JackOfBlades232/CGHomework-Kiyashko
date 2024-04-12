@@ -9,12 +9,12 @@ void SimpleShadowmapRender::DoImGUI()
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   {
-//    ImGui::ShowDemoWindow();
     ImGui::Begin("Simple render settings");
 
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
     ImGui::SliderFloat3("Light source position", m_light.cam.pos.M, -10.f, 10.f);
 
+    DeferredChoiceGUI();
     ShadowmapChoiceGUI();
     AAChoiceGui();
 
@@ -31,11 +31,37 @@ void SimpleShadowmapRender::DoImGUI()
   {
     settingsAreDirty = false;
     RebuildCurrentForwardPipeline();
+    RebuildCurrentDeferredResolvePipeline();
     resetReprojection = true;
   }
 
   // Rendering
   ImGui::Render();
+}
+
+void SimpleShadowmapRender::DeferredChoiceGUI()
+{
+  const char *items[eShTechMax]  = { "Forward", "Deferred" };
+  static const char *currentItem = useDeferredRendering ? items[1] : items[0];
+
+  if (ImGui::BeginCombo("##rendering technique", currentItem, ImGuiComboFlags_NoArrowButton))
+  { 
+    for (int i = 0; i < IM_ARRAYSIZE(items); i++)
+    {
+      bool selected = (currentItem == items[i]);
+      if (ImGui::Selectable(items[i], selected))
+      {
+        currentItem = items[i];
+        useDeferredRendering = i == 1;
+      }
+      if (selected)
+      {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+
+    ImGui::EndCombo();
+  }
 }
 
 void SimpleShadowmapRender::ShadowmapChoiceGUI()

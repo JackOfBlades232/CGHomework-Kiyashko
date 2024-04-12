@@ -95,51 +95,6 @@ void SimpleShadowmapRender::SetupAAPipelines()
 }
 
 
-/// TECHNIQUE CHOICE
-
-etna::Image *SimpleShadowmapRender::CurrentAARenderTarget()
-{
-  switch (currentAATechnique)
-  {
-  case eSsaa:
-    return &ssaaRt;
-  case eMsaa:
-    return &msaaRt;
-  case eTaa:
-    return &taaRt;
-  case eNone:
-    return nullptr;
-  }
-}
-
-etna::Image *SimpleShadowmapRender::CurrentAADepthTex()
-{
-  switch (currentAATechnique)
-  {
-  case eSsaa:
-    return &ssaaDepth;
-  case eMsaa:
-    return &msaaDepth;
-  case eTaa: // @TODO(PKiyashko): this is janky and untrue. Return mainDepthTex? But then it won't be aa specific
-  case eNone:
-    return nullptr;
-  }
-}
-
-vk::Rect2D SimpleShadowmapRender::CurrentAARect()
-{
-  switch (currentAATechnique)
-  {
-  case eSsaa:
-    return vk::Rect2D{0, 0, m_width*2, m_height*2};
-  case eMsaa:
-  case eTaa:
-  case eNone:
-    return vk::Rect2D{0, 0, m_width, m_height};
-  }
-}
-
-
 /// COMMAND BUFFER FILLING
 
 void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)

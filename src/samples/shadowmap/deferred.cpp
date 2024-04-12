@@ -51,28 +51,13 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
           .depthAttachmentFormat = vk::Format::eD32Sfloat
         }
     });
+}
 
-  m_pGbufferSimpleResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
+void SimpleShadowmapRender::RebuildCurrentDeferredResolvePipeline()
+{
+  m_pGbufferResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
       .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_resolve.frag.spv",
-      .programName    = "deferred_resolve_simple",
-      .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .extent         = vk::Extent2D{m_width, m_height}
-    });
-  m_pGbufferShadowResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/shadow_resolve.frag.spv",
-      .programName    = "deferred_resolve_shadow",
-      .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .extent         = vk::Extent2D{m_width, m_height}
-    });
-  m_pGbufferVsmResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_resolve.frag.spv",
-      .programName    = "deferred_resolve_vsm",
-      .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .extent         = vk::Extent2D{m_width, m_height}
-    });
-  m_pGbufferPcfResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_resolve.frag.spv",
-      .programName    = "deferred_resolve_pcf",
+      .programName    = "deferred_resolve",
       .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .extent         = vk::Extent2D{m_width, m_height}
     });
@@ -92,8 +77,8 @@ void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
     RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
 }
 
-void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff)
+void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
-  m_pGbufferResolver->RecordCommands()
+  m_pGbufferResolver->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, CurrentRTBindings());
 }
 

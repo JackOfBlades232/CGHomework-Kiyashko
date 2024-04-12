@@ -19,7 +19,6 @@ public:
   };
 
   QuadRenderer(CreateInfo info);
-  ~QuadRenderer() {}
 
   void RecordCommands(vk::CommandBuffer cmdBuff, vk::Image targetImage, vk::ImageView targetImageView,
                       const etna::Image &inTex, const etna::Sampler &sampler);

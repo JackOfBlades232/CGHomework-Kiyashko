@@ -28,7 +28,7 @@ void SimpleShadowmapRender::LoadForwardShaders()
 }
 
 // @TODO(PKiyashko): pull out this generic pipeline creation to some utils thing.
-void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
+void SimpleShadowmapRender::RebuildCurrentForwardPipelines()
 {
   etna::VertexShaderInputDescription sceneVertexInputDesc{
     .bindings = { etna::VertexShaderInputDescription::Binding{
@@ -41,9 +41,19 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
     .rasterizationSamples = currentAATechnique == eMsaa ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1
   };
 
-  const char *programName = CurrentForwardProgramName();
-  m_forwardPipeline = pipelineManager.createGraphicsPipeline(programName,
+  m_forwardPipeline = pipelineManager.createGraphicsPipeline(CurrentForwardProgramName(),
     { 
+      .vertexShaderInput    = sceneVertexInputDesc,
+      .multisampleConfig    = multisampleConfig,
+      .fragmentShaderOutput = 
+      {
+        .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
+        .depthAttachmentFormat  = vk::Format::eD32Sfloat 
+      }
+    });
+
+  m_terrainForwardPipeline = pipelineManager.createGraphicsPipeline(CurrentTerrainForwardProgramName(),
+    {
       .vertexShaderInput    = sceneVertexInputDesc,
       .multisampleConfig    = multisampleConfig,
       .fragmentShaderOutput = 
@@ -105,5 +115,7 @@ void SimpleShadowmapRender::RecordForwardPassCommands(VkCommandBuffer a_cmdBuff,
     m_forwardPipeline.getVkPipelineLayout(), 0, vkSets.size(), vkSets.data(), 0, VK_NULL_HANDLE);
 
   RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_forwardPipeline.getVkPipelineLayout());
+
+  RecordDrawTerrainForwardCommands(a_cmdBuff, m_worldViewProj);
 }
 

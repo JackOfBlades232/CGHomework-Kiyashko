@@ -72,6 +72,16 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
           .depthAttachmentFormat = vk::Format::eD32Sfloat
         }
     });
+
+  m_terrainGpassPipeline = pipelineManager.createGraphicsPipeline("terrain_gpass",
+    {
+      .vertexShaderInput    = sceneVertexInputDesc,
+      .fragmentShaderOutput =
+        {
+          .colorAttachmentFormats = {vk::Format::eR32G32B32A32Sfloat},
+          .depthAttachmentFormat = vk::Format::eD32Sfloat
+        }
+    });
 }
 
 void SimpleShadowmapRender::RebuildCurrentDeferredPipelines()
@@ -129,6 +139,8 @@ void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_geometryPipeline.getVkPipeline());
   RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
+
+  RecordDrawTerrainGpassCommands(a_cmdBuff, m_worldViewProj);
 }
 
 void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)

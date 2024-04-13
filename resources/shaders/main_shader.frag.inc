@@ -1,3 +1,6 @@
+#ifndef MAIN_SHADER_FRAG_INC
+#define MAIN_SHADER_FRAG_INC
+
 layout(location = 0) out vec4 out_fragColor;
 
 #if USE_GBUFFER
@@ -30,5 +33,7 @@ layout(location = 0) in VS_OUT
 #define UNPACK_PARAMETERS()     \
   const vec3 pos  = surf.wPos;  \
   const vec3 norm = surf.wNorm;
+
+#endif
 
 #endif

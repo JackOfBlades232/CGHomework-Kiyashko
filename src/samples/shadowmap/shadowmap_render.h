@@ -83,6 +83,9 @@ private:
   etna::Image *taaPrevFrame = &taaFrames[1];
   etna::Image taaRt;
 
+  // Terrain
+  etna::Image terrainHmap;
+
   VkCommandPool m_commandPool = VK_NULL_HANDLE;
 
   struct
@@ -124,6 +127,10 @@ private:
   etna::GraphicsPipeline m_simpleShadowPipeline {};
   etna::GraphicsPipeline m_vsmShadowPipeline    {};
   etna::ComputePipeline  m_vsmFilteringPipeline {};
+
+  // Terrain
+  etna::GraphicsPipeline m_terrainForwardPipeline, m_terrainGpassPipeline;
+  etna::ComputePipeline m_hmapGeneratePipeline;
 
   // Anti-aliasing
   std::unique_ptr<PostfxRenderer> m_pTaaReprojector;
@@ -170,9 +177,14 @@ private:
   };
 
   // Forbidden combinations: msaa + deferred
-  bool useDeferredRendering                    = true;
-  ShadowmapTechnique currentShadowmapTechnique = eVsm;
-  AATechnique currentAATechnique               = eSsaa;
+  bool useDeferredRendering                    = false;
+  ShadowmapTechnique currentShadowmapTechnique = eShTechNone;
+  AATechnique currentAATechnique               = eAATechNone;
+  //bool useDeferredRendering                    = true;
+  //ShadowmapTechnique currentShadowmapTechnique = eVsm;
+  //AATechnique currentAATechnique               = eSsaa;
+
+  bool needToRegenerateHmap = true;
 
   bool settingsAreDirty = true;
 
@@ -239,7 +251,7 @@ private:
 
   // Forward shading
   void LoadForwardShaders();
-  void RebuildCurrentForwardPipeline();
+  void RebuildCurrentForwardPipelines();
   const char *CurrentForwardProgramName();
   GBuffer *CurrentGbuffer();
   void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
@@ -269,6 +281,16 @@ private:
   void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
   // @TODO(PKiyashko): this update should be less hacky, more centralized with others
   float CurrentTaaReprojectionCoeff();
+
+  // Terrain
+  void AllocateTerrainResources();
+  void DeallocateTerrainResources();
+  void LoadTerrainShaders();
+  void SetupTerrainPipelines();
+  const char *CurrentTerrainForwardProgramName();
+  void RecordHmapGenerationCommands(VkCommandBuffer a_cmdBuff);
+  void RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 };
 
 

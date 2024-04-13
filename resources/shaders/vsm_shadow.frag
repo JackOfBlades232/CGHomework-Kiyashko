@@ -11,7 +11,7 @@ layout(binding = 0, set = 0) uniform AppData
   UniformParams Params;
 };
 
-layout (binding = 1) uniform sampler2D shadowMapMoments;
+layout(binding = 1) uniform sampler2D shadowMapMoments;
 
 void main()
 {

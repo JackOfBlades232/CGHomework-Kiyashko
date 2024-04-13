@@ -38,6 +38,7 @@ void SimpleShadowmapRender::AllocateResources()
   AllocateDeferredResources();
   AllocateShadowmapResources();
   AllocateAAResources();
+  AllocateTerrainResources();
 }
 
 void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
@@ -58,6 +59,7 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 
 void SimpleShadowmapRender::DeallocateResources()
 {
+  DeallocateTerrainResources();
   DeallocateAAResources();
   DeallocateShadowmapResources();
   DeallocateDeferredResources();
@@ -72,6 +74,14 @@ void SimpleShadowmapRender::DeallocateResources()
 
 /// PIPELINES CREATION
 
+void SimpleShadowmapRender::LoadShaders()
+{
+  LoadForwardShaders();
+  LoadDeferredShaders();
+  LoadShadowmapShaders();
+  LoadTerrainShaders();
+}
+
 void SimpleShadowmapRender::PreparePipelines()
 {
   // create full screen quad for debug purposes
@@ -84,13 +94,7 @@ void SimpleShadowmapRender::PreparePipelines()
   SetupDeferredPipelines();
   SetupShadowmapPipelines();
   SetupAAPipelines();
-}
-
-void SimpleShadowmapRender::LoadShaders()
-{
-  LoadForwardShaders();
-  LoadDeferredShaders();
-  LoadShadowmapShaders();
+  SetupTerrainPipelines();
 }
 
 
@@ -105,6 +109,13 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
   VK_CHECK_RESULT(vkBeginCommandBuffer(a_cmdBuff, &beginInfo));
+
+  // Terrain heightmap generation
+  if (needToRegenerateHmap)
+  {
+    RecordHmapGenerationCommands(a_cmdBuff);
+    needToRegenerateHmap = false;
+  }
 
   // Shadowmap
   RecordShadowPassCommands(a_cmdBuff);
@@ -126,7 +137,7 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, *taaPrevFrame, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, terrainHmap, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,

@@ -129,13 +129,13 @@ void SimpleShadowmapRender::RecordShadowmapProcessingCommands(VkCommandBuffer a_
 
     auto programInfo = etna::get_shader_program("vsm_filtering");
     auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff, { 
-      etna::Binding {0, vsmMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
-      etna::Binding {1, vsmSmoothMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)}
+      etna::Binding{0, vsmMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{1, vsmSmoothMomentMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)}
     });
 
     VkDescriptorSet vkSet = set.getVkSet();
 
-    uint32_t wgDim = (2048 - 1) / WORK_GROUP_DIM + 1;
+    uint32_t wgDim = (2048 - 1) / VSM_WORK_GROUP_DIM + 1;
 
     vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_vsmFilteringPipeline.getVkPipeline());
     vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,

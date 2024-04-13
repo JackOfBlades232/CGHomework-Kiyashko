@@ -5,62 +5,62 @@
 
 #include "common.h"
 
-layout(local_size_x = WORK_GROUP_DIM, local_size_y = WORK_GROUP_DIM) in;
+layout(local_size_x = VSM_WORK_GROUP_DIM, local_size_y = VSM_WORK_GROUP_DIM) in;
 
 // Texture and image considered same size
 // Need separate so that work groups don't race at edges
 layout(binding = 0 ) uniform sampler2D momentsTex;
 layout(binding = 1, rg32f) uniform image2D smoothedMomentsTex;
 
-shared vec2 textureStorage[WORK_GROUP_DIM + 2*WINDOW_HALFSIZE][WORK_GROUP_DIM + 2*WINDOW_HALFSIZE];
+shared vec2 textureStorage[VSM_WORK_GROUP_DIM + 2*VSM_WINDOW_HALFSIZE][VSM_WORK_GROUP_DIM + 2*VSM_WINDOW_HALFSIZE];
 
 void read_data_to_storage(ivec2 coord, ivec2 base, vec2 texSize)
 {
-    textureStorage[coord.y][coord.x] = textureLod(momentsTex, vec2(base + coord)/texSize, 0).xy;
+  textureStorage[coord.y][coord.x] = textureLod(momentsTex, vec2(base + coord)/texSize, 0).xy;
 }
 
 void main() 
 {
-    const ivec2 imgSize = textureSize(momentsTex, 0);
-    const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
-    const ivec2 localCoord = ivec2(gl_LocalInvocationID.xy);
+  const ivec2 imgSize = textureSize(momentsTex, 0);
+  const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
+  const ivec2 localCoord = ivec2(gl_LocalInvocationID.xy);
 
-    const ivec2 storageCoord = localCoord + ivec2(WINDOW_HALFSIZE);
-    const ivec2 storageBase = globalCoord - storageCoord;
+  const ivec2 storageCoord = localCoord + ivec2(VSM_WINDOW_HALFSIZE);
+  const ivec2 storageBase = globalCoord - storageCoord;
 
-    // Fill shared storage
-    // we assert in c++ that WINDOW_HALFSIZE < WORK_GROUP_DIM
+  // Fill shared storage
+  // we assert in c++ that VSM_WINDOW_HALFSIZE < VSM_WORK_GROUP_DIM
 
-    read_data_to_storage(storageCoord, storageBase, imgSize);
-    if (localCoord.x < WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord - ivec2(WINDOW_HALFSIZE, 0), storageBase, imgSize);
-    else if (localCoord.x >= WORK_GROUP_DIM - WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord + ivec2(WINDOW_HALFSIZE, 0), storageBase, imgSize);
-    if (localCoord.y < WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord - ivec2(0, WINDOW_HALFSIZE), storageBase, imgSize);
-    else if (localCoord.y >= WORK_GROUP_DIM - WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord + ivec2(0, WINDOW_HALFSIZE), storageBase, imgSize);
+  read_data_to_storage(storageCoord, storageBase, imgSize);
+  if (localCoord.x < VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(VSM_WINDOW_HALFSIZE, 0), storageBase, imgSize);
+  else if (localCoord.x >= VSM_WORK_GROUP_DIM - VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(VSM_WINDOW_HALFSIZE, 0), storageBase, imgSize);
+  if (localCoord.y < VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(0, VSM_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.y >= VSM_WORK_GROUP_DIM - VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(0, VSM_WINDOW_HALFSIZE), storageBase, imgSize);
 
-    if (localCoord.x < WINDOW_HALFSIZE && localCoord.y < WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord - ivec2(WINDOW_HALFSIZE, WINDOW_HALFSIZE), storageBase, imgSize);
-    else if (localCoord.x >= WORK_GROUP_DIM - WINDOW_HALFSIZE && localCoord.y < WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord - ivec2(-WINDOW_HALFSIZE, WINDOW_HALFSIZE), storageBase, imgSize);
-    else if (localCoord.x < WINDOW_HALFSIZE && localCoord.y >= WORK_GROUP_DIM - WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord + ivec2(-WINDOW_HALFSIZE, WINDOW_HALFSIZE), storageBase, imgSize);
-    else if (localCoord.x >= WORK_GROUP_DIM - WINDOW_HALFSIZE && localCoord.y >= WORK_GROUP_DIM - WINDOW_HALFSIZE)
-        read_data_to_storage(storageCoord + ivec2(WINDOW_HALFSIZE, WINDOW_HALFSIZE), storageBase, imgSize);
+  if (localCoord.x < VSM_WINDOW_HALFSIZE && localCoord.y < VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(VSM_WINDOW_HALFSIZE, VSM_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.x >= VSM_WORK_GROUP_DIM - VSM_WINDOW_HALFSIZE && localCoord.y < VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(-VSM_WINDOW_HALFSIZE, VSM_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.x < VSM_WINDOW_HALFSIZE && localCoord.y >= VSM_WORK_GROUP_DIM - VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(-VSM_WINDOW_HALFSIZE, VSM_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.x >= VSM_WORK_GROUP_DIM - VSM_WINDOW_HALFSIZE && localCoord.y >= VSM_WORK_GROUP_DIM - VSM_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(VSM_WINDOW_HALFSIZE, VSM_WINDOW_HALFSIZE), storageBase, imgSize);
 
-    barrier();
+  barrier();
 
-    if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y) {
-        vec2 accum = vec2(0.0f);
-        const float div = float((2*WINDOW_HALFSIZE + 1)*(2*WINDOW_HALFSIZE + 1));
+  if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y) {
+    vec2 accum = vec2(0.0f);
+    const float div = float((2*VSM_WINDOW_HALFSIZE + 1)*(2*VSM_WINDOW_HALFSIZE + 1));
 
-        for (int y = -WINDOW_HALFSIZE; y < WINDOW_HALFSIZE + 1; ++y)
-            for (int x = -WINDOW_HALFSIZE; x < WINDOW_HALFSIZE + 1; ++x) {
-                accum += textureStorage[storageCoord.y + y][storageCoord.x + x];
-            }
+    for (int y = -VSM_WINDOW_HALFSIZE; y < VSM_WINDOW_HALFSIZE + 1; ++y)
+      for (int x = -VSM_WINDOW_HALFSIZE; x < VSM_WINDOW_HALFSIZE + 1; ++x) {
+        accum += textureStorage[storageCoord.y + y][storageCoord.x + x];
+      }
 
-        imageStore(smoothedMomentsTex, globalCoord, vec4(accum/div, 1.0f, 1.0f));
-    }
+    imageStore(smoothedMomentsTex, globalCoord, vec4(accum/div, 1.0f, 1.0f));
+  }
 }

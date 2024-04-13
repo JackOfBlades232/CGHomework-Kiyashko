@@ -27,11 +27,11 @@ void main()
     if (!outOfView) {
         vec2 texSize = textureSize(shadowMap, 0);
         float hitCount = 0.0f;
-        float divisor = (2.0*float(WINDOW_HALFSIZE) + 1.0)*(2.0*float(WINDOW_HALFSIZE) + 1.0);
+        float divisor = (2.0*float(VSM_WINDOW_HALFSIZE) + 1.0)*(2.0*float(VSM_WINDOW_HALFSIZE) + 1.0);
         vec2 pix_coord = shadowTexCoord * texSize;
 
-        for (int y = int(pix_coord.y) - WINDOW_HALFSIZE; y < int(pix_coord.y) + WINDOW_HALFSIZE + 1; ++y)
-            for (int x = int(pix_coord.x) - WINDOW_HALFSIZE; x < int(pix_coord.x) + WINDOW_HALFSIZE + 1; ++x) {
+        for (int y = int(pix_coord.y) - VSM_WINDOW_HALFSIZE; y < int(pix_coord.y) + VSM_WINDOW_HALFSIZE + 1; ++y)
+            for (int x = int(pix_coord.x) - VSM_WINDOW_HALFSIZE; x < int(pix_coord.x) + VSM_WINDOW_HALFSIZE + 1; ++x) {
                 if (textureLod(shadowMap, vec2(x, y)/texSize, 0).x + 0.001f > posLightSpaceNDC.z)
                     hitCount += 1.0f;
             }

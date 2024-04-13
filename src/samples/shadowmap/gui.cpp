@@ -18,6 +18,9 @@ void SimpleShadowmapRender::DoImGUI()
     ShadowmapChoiceGUI();
     AAChoiceGui();
 
+    if (ImGui::Button("Regenerate terrain heightmap"))
+      needToRegenerateHmap = true;
+
     ImGui::NewLine();
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -36,7 +39,7 @@ void SimpleShadowmapRender::DoImGUI()
     if (useDeferredRendering && currentAATechnique == eMsaa)
       currentAATechnique = eSsaa;
 
-    RebuildCurrentForwardPipeline();
+    RebuildCurrentForwardPipelines();
     RebuildCurrentDeferredPipelines();
     resetReprojection = true;
   }

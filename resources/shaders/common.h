@@ -3,15 +3,19 @@
 
 // GLSL-C++ datatype compatibility layer
 
-#define WORK_GROUP_DIM 16
-#define WINDOW_HALFSIZE 5
+#define VSM_WORK_GROUP_DIM 16
+#define VSM_WINDOW_HALFSIZE 5
+
+#define LANDMESH_DIM 1000
+
+#define HMAP_WORK_GROUP_DIM 18
 
 #ifdef __cplusplus
 
 #include <LiteMath.h>
 
 #include <cassert>
-static_assert(WINDOW_HALFSIZE <= WORK_GROUP_DIM); // for compute shader
+static_assert(VSM_WINDOW_HALFSIZE <= VSM_WORK_GROUP_DIM); // for compute shader
 
 // NOTE: This is technically completely wrong,
 // as GLSL words are guaranteed to be 32-bit,

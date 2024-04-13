@@ -122,14 +122,18 @@ void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 
 void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
+  auto attachments = CurrentRTAttachments(a_targetImage, a_targetImageView);
   auto bindings = CurrentRTBindings();
 
   // Gbuffer to dSet 1
-  bindings.push_back({ 
-    etna::Binding{ 0, gbuffer.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
-    etna::Binding{ 1, gbuffer.depth->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
+  bindings.push_back(
+    { 
+      etna::Binding{ 0, gbuffer.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
+      etna::Binding{ 1, gbuffer.depth->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
     });
 
-  m_pGbufferResolver->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, std::move(bindings));
+  // @TODO(PKiyashko): add ability to pass multiple attachments to postfx rederer? This basically
+  //                   assumes that there is always one attachment
+  m_pGbufferResolver->RecordCommands(a_cmdBuff, attachments[0].image, attachments[0].view, std::move(bindings));
 }
 

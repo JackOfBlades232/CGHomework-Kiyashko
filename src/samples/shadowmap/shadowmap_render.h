@@ -153,6 +153,7 @@ private:
 
     eShTechMax
   };
+  // @TODO(PKiyashko): make use of special MSAA settings in AttacmentParams, provided graciously by Kostya
   // @TODO(PKiyashko): add different scale settings (xN)
   // @TODO(PKiyashko): proper taa with motion vectors and deferred
   enum AATechnique

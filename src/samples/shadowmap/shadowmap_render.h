@@ -182,6 +182,7 @@ private:
   AATechnique currentAATechnique               = eSsaa;
 
   bool needToRegenerateHmap = true;
+  float2 terrainMinMaxHeight = float2(0.f, 3.f);
 
   bool settingsAreDirty = true;
 

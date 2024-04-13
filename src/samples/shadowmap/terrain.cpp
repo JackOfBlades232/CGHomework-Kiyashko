@@ -116,7 +116,7 @@ void SimpleShadowmapRender::RecordHmapGenerationCommands(VkCommandBuffer a_cmdBu
   etna::flush_barriers(a_cmdBuff);
 }
 
-static const float4x4 terrain_transform = translate4x4(float3(0.f, -5.f, 0.f)) * scale4x4(float3(0.5f, 1.f, 0.5f));
+static const float4x4 terrain_transform = translate4x4(float3(0.f, -3.f, 0.f)) * scale4x4(float3(0.2f, 1.f, 0.2f));
 
 void SimpleShadowmapRender::RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {

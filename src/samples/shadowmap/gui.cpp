@@ -13,14 +13,13 @@ void SimpleShadowmapRender::DoImGUI()
 
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
     ImGui::SliderFloat3("Light source position", m_light.cam.pos.M, -10.f, 10.f);
-    ImGui::SliderFloat2("Min/max terrain height", (float *)&m_uniforms.minMaxHeight, -10.f, 10.f);
+    ImGui::SliderFloat2("Min/max terrain height", (float *)&terrainMinMaxHeight, -10.f, 10.f);
+    if (terrainMinMaxHeight.x > terrainMinMaxHeight.y)
+      terrainMinMaxHeight.x = terrainMinMaxHeight.y;
 
     DeferredChoiceGUI();
     ShadowmapChoiceGUI();
     AAChoiceGui();
-
-    if (ImGui::Button("Regenerate terrain heightmap"))
-      needToRegenerateHmap = true;
 
     ImGui::NewLine();
 

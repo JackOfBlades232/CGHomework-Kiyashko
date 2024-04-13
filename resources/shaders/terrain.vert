@@ -30,7 +30,7 @@ void main()
   const vec2 base = vec2(-float(LANDMESH_DIM) * 0.5);
   const vec2 disp = vec2(1.0);
   const uint quadId = gl_VertexIndex / 6;
-  const uint inQuadId = gl_VertexIndex - 6 * quadId;
+  const uint inQuadId = gl_VertexIndex % 6;
   const vec2 quadCoord = vec2(quadId % LANDMESH_DIM, quadId / LANDMESH_DIM);
 
   vec2 planarPos = base + disp * quadCoord;

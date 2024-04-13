@@ -65,6 +65,7 @@ struct UniformParams
   shader_mat4  prevProjViewMatrix;
   shader_float reprojectionCoeff;
   shader_uint  frameCounter;
+  shader_vec2  minMaxHeight;
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

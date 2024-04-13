@@ -1,39 +1,42 @@
 #ifndef NOISE_GLSL_INC
 #define NOISE_GLSL_INC
 
-float simple_1d_noise(float key, float seed)
+// Thx to Ian McEwan
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+float snoise(vec2 v)
 {
-  vec3 a = 0.432312*vec3(fract(key * seed)) + vec3(0.11, -0.33, 0.03);
-  float b = fract(dot(a, a)*a.x*a.y*a.z);
-  return 0.97*b*b;
-}
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
 
-vec2 simple_2d_noise_derived(vec2 key, float seed)
-{
-  return vec2(
-      simple_1d_noise(key.x, seed), 
-      simple_1d_noise(simple_1d_noise(key.y, seed), seed));
-}
+  vec2 i  = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
 
-float perlin_noise_2d(vec2 key, float seed)
-{
-  vec2 p1 = fract(key); 
-  vec2 p2 = p1 + vec2(1.0, 0.0);
-  vec2 p3 = p1 + vec2(0.0, 1.0);
-  vec2 p4 = p1 + vec2(1.0, 1.0);
+  vec2 i1 = vec2(0.0);
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec2 x1 = x0.xy + C.xx - i1;
+  vec2 x2 = x0.xy + C.zz;
 
-  vec2 g1 = normalize(simple_2d_noise_derived(p1, seed));
-  vec2 g2 = normalize(simple_2d_noise_derived(p2, seed));
-  vec2 g3 = normalize(simple_2d_noise_derived(p3, seed));
-  vec2 g4 = normalize(simple_2d_noise_derived(p4, seed));
+  i = mod289(i);
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
 
-  float d1 = dot(g1, key - p1);
-  float d2 = dot(g2, key - p2);
-  float d3 = dot(g3, key - p3);
-  float d4 = dot(g4, key - p4);
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);
 
-  // @TODO: smooth function?
-  return (d1 + d2 + d3 + d4) * 0.25;
+  m = m*m;
+  m = m*m;
+
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+
+  m *= 1.79284291400159 - 0.85373472095314 * (a0*a0+h*h);
+
+  vec3 g = vec3(0.0);
+  g.x  = a0.x * x0.x + h.x * x0.y;
+  g.yz = a0.yz * vec2(x1.x,x2.x) + h.yz * vec2(x1.y,x2.y);
+  return 130.0 * dot(m, g);
 }
 
 #endif

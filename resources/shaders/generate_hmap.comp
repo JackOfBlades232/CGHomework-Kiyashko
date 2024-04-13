@@ -20,7 +20,10 @@ void main()
 {
   const ivec2 imgSize = imageSize(hmap);
   const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
+  const vec2 texCoord = gl_GlobalInvocationID.xy / vec2(imgSize);
+
+  const float noise = (snoise(texCoord * 10.0) + 1.0) * 0.5;
 
   if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y)
-    imageStore(hmap, globalCoord, vec4(perlin_noise_2d(vec2(globalCoord), params.seed), 1.0f, 1.0f, 1.0f));
+    imageStore(hmap, globalCoord, vec4(noise, 1.0f, 1.0f, 1.0f));
 }

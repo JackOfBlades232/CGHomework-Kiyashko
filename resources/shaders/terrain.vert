@@ -18,6 +18,11 @@ layout(location = 0) out VS_OUT
   vec2 texCoord;
 } vOut;
 
+layout(binding = 0, set = 0) uniform AppData
+{
+  UniformParams Params;
+};
+
 layout(binding = 8, set = 0) uniform sampler2D heightMap;
 
 void main()
@@ -43,10 +48,11 @@ void main()
     break;
   }
 
-  const float height = 
+  const float heightFrac = 
     textureLod(heightMap, (planarPos + base) / float(LANDMESH_DIM), 0).x;
 
-  const vec3 pos = vec3(planarPos.x, height, planarPos.y);
+  const vec3 pos = 
+    vec3(planarPos.x, mix(Params.minMaxHeight.x, Params.minMaxHeight.y, heightFrac), planarPos.y);
   const vec3 norm = vec3(0.0, 1.0, 0.0);
 
   vOut.wPos     = (params.mModel * vec4(pos, 1.0f)).xyz;

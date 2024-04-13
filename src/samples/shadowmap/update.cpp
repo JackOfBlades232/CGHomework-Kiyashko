@@ -50,6 +50,10 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.reprojectionCoeff  = CurrentTaaReprojectionCoeff();
   ++m_uniforms.frameCounter;
 
+  // It is directly set with imgui
+  if (m_uniforms.minMaxHeight.x > m_uniforms.minMaxHeight.y)
+    m_uniforms.minMaxHeight.x = m_uniforms.minMaxHeight.y;
+
   memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
 }
 

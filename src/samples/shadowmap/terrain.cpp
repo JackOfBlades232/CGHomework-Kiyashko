@@ -60,37 +60,6 @@ void SimpleShadowmapRender::SetupTerrainPipelines()
   m_hmapGeneratePipeline = pipelineManager.createComputePipeline("generate_hmap", {});
 }
 
-void SimpleShadowmapRender::RecordHmapGenerationCommands(VkCommandBuffer a_cmdBuff)
-{
-  etna::set_state(a_cmdBuff, terrainHmap.get(), 
-    vk::PipelineStageFlagBits2::eComputeShader,
-    vk::AccessFlags2(vk::AccessFlagBits2::eShaderWrite),
-    vk::ImageLayout::eGeneral,
-    vk::ImageAspectFlagBits::eColor);
-  etna::flush_barriers(a_cmdBuff);
-
-  auto programInfo = etna::get_shader_program("generate_hmap");
-  auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff, 
-    { etna::Binding{0, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)} });
-  VkDescriptorSet vkSet = set.getVkSet();
-
-  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_hmapGeneratePipeline.getVkPipeline());
-  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
-    m_hmapGeneratePipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
-
-  float seed = (float)rand() / RAND_MAX;
-  vkCmdPushConstants(a_cmdBuff, m_hmapGeneratePipeline.getVkPipelineLayout(),
-    VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(seed), &seed);
-
-  uint32_t wgDim = (LANDMESH_DIM - 1) / HMAP_WORK_GROUP_DIM + 1;
-  vkCmdDispatch(a_cmdBuff, wgDim, wgDim, 1);
-
-  etna::set_state(a_cmdBuff, terrainHmap.get(), vk::PipelineStageFlagBits2::eAllGraphics,
-    vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead), vk::ImageLayout::eShaderReadOnlyOptimal,
-    vk::ImageAspectFlagBits::eColor);
-  etna::flush_barriers(a_cmdBuff);
-}
-
 
 /// TECHNIQUE CHOICE
 
@@ -116,6 +85,39 @@ const char *SimpleShadowmapRender::CurrentTerrainForwardProgramName()
 
 /// COMMAND BUFFER FILLING
 
+void SimpleShadowmapRender::RecordHmapGenerationCommands(VkCommandBuffer a_cmdBuff)
+{
+  etna::set_state(a_cmdBuff, terrainHmap.get(), 
+    vk::PipelineStageFlagBits2::eComputeShader,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderWrite),
+    vk::ImageLayout::eGeneral,
+    vk::ImageAspectFlagBits::eColor);
+  etna::flush_barriers(a_cmdBuff);
+
+  auto programInfo = etna::get_shader_program("generate_hmap");
+  auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff, 
+    { etna::Binding{0, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)} });
+  VkDescriptorSet vkSet = set.getVkSet();
+
+  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_hmapGeneratePipeline.getVkPipeline());
+  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
+    m_hmapGeneratePipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+  float seed = m_uniforms.time;
+  vkCmdPushConstants(a_cmdBuff, m_hmapGeneratePipeline.getVkPipelineLayout(),
+    VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(seed), &seed);
+
+  uint32_t wgDim = (LANDMESH_DIM - 1) / HMAP_WORK_GROUP_DIM + 1;
+  vkCmdDispatch(a_cmdBuff, wgDim, wgDim, 1);
+
+  etna::set_state(a_cmdBuff, terrainHmap.get(), vk::PipelineStageFlagBits2::eAllGraphics,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead), vk::ImageLayout::eShaderReadOnlyOptimal,
+    vk::ImageAspectFlagBits::eColor);
+  etna::flush_barriers(a_cmdBuff);
+}
+
+static const float4x4 terrain_transform = translate4x4(float3(0.f, -5.f, 0.f)) * scale4x4(float3(0.5f, 1.f, 0.5f));
+
 void SimpleShadowmapRender::RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {
   auto programInfo = etna::get_shader_program(CurrentTerrainForwardProgramName());
@@ -139,9 +141,8 @@ void SimpleShadowmapRender::RecordDrawTerrainForwardCommands(VkCommandBuffer a_c
   vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
     m_terrainForwardPipeline.getVkPipelineLayout(), 0, vkSets.size(), vkSets.data(), 0, VK_NULL_HANDLE);
 
-  // @TODO(PKiyashko): 1) pull this out from both methods 2) add more adequate model matrix (centered below init camera pos?)
   pushConst2M.projView = a_wvp;
-  pushConst2M.model.identity();
+  pushConst2M.model = terrain_transform;
   vkCmdPushConstants(a_cmdBuff, m_terrainGpassPipeline.getVkPipelineLayout(),
     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst2M), &pushConst2M);
 
@@ -152,7 +153,10 @@ void SimpleShadowmapRender::RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmd
 {
   auto programInfo = etna::get_shader_program("terrain_gpass");
   auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff,
-    { etna::Binding{8, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)} });
+    { 
+      etna::Binding{0, constants.genBinding()},
+      etna::Binding{8, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)} 
+    });
   VkDescriptorSet vkSet = set.getVkSet();
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_terrainGpassPipeline.getVkPipeline());
@@ -160,7 +164,7 @@ void SimpleShadowmapRender::RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmd
     m_terrainGpassPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
   pushConst2M.projView = a_wvp;
-  pushConst2M.model.identity();
+  pushConst2M.model = terrain_transform;
   vkCmdPushConstants(a_cmdBuff, m_terrainGpassPipeline.getVkPipelineLayout(),
     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst2M), &pushConst2M);
 

@@ -1,7 +1,6 @@
 #include "shadowmap_render.h"
 #include "utils/glfw_window.h"
 #include <etna/Etna.hpp>
-#include <cstdlib>
 
 void initVulkanGLFW(std::shared_ptr<IRender> &app, GLFWwindow* window)
 {
@@ -29,8 +28,6 @@ int main()
 {
   constexpr int WIDTH = 1024;
   constexpr int HEIGHT = 1024;
-
-  srand(time(nullptr));
 
   std::shared_ptr<IRender> app = std::make_unique<SimpleShadowmapRender>(SimpleShadowmapRender::CreateInfo{WIDTH, HEIGHT});
   if(app == nullptr)

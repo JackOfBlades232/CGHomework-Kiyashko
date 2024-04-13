@@ -21,8 +21,16 @@ void SimpleShadowmapRender::AllocateAAResources()
     .extent     = ssaaRtExtent,
     .name       = "ssaa_depth",
     .format     = vk::Format::eD32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment
+    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
   });
+  ssaaGbuffer.normals = m_context->createImage(etna::Image::CreateInfo
+  {
+    .extent     = ssaaRtExtent,
+    .name       = "ssaa_gbuf_normals",
+    .format     = vk::Format::eR32G32B32A32Sfloat,
+    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+  });
+  ssaaGbuffer.depth = &ssaaDepth;
 
   const vk::Extent3D msaaRtExtent{vk::Extent3D{m_width, m_height, 1}};
 
@@ -39,7 +47,7 @@ void SimpleShadowmapRender::AllocateAAResources()
     .extent     = msaaRtExtent,
     .name       = "msaa_depth",
     .format     = vk::Format::eD32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
     .samples    = vk::SampleCountFlagBits::e4
   });
 
@@ -72,6 +80,7 @@ void SimpleShadowmapRender::DeallocateAAResources()
 {
   ssaaRt.reset();
   ssaaDepth.reset();
+  ssaaGbuffer.normals.reset();
 
   msaaRt.reset();
   msaaDepth.reset();

@@ -58,11 +58,12 @@ private:
   etna::Buffer constants;
 
   // Deferred
-  struct
+  struct GBuffer
   {
     etna::Image normals; 
     etna::Image *depth;
-  } gbuffer;
+  };
+  GBuffer gbuffer;
 
   // Shadow maps
   etna::Image shadowMap;
@@ -70,10 +71,12 @@ private:
   etna::Image vsmSmoothMomentMap;
 
   // Anti-aliasing
+  // @TODO(PKiyashko): this is a lot of excess resources. Move to recreating instead.
   etna::Image ssaaRt;
   etna::Image ssaaDepth;
   etna::Image msaaRt;
   etna::Image msaaDepth;
+  GBuffer ssaaGbuffer;
 
   etna::Image taaFrames[2];
   etna::Image *taaCurFrame = &taaFrames[0];
@@ -161,18 +164,17 @@ private:
     eAATechNone = 0,
     eSsaa,
     eMsaa,
-    eTaa, // @TODO(PKiyashko): it is not too good as of now
+    eTaa,
 
     eAATechMax
   };
 
-  bool useDeferredRendering                    = false;
-  //ShadowmapTechnique currentShadowmapTechnique = eVsm;
-  ShadowmapTechnique currentShadowmapTechnique = eShTechNone;
-  //AATechnique currentAATechnique               = eMsaa;
-  AATechnique currentAATechnique               = eAATechNone;
+  // Forbidden combinations: msaa + deferred
+  bool useDeferredRendering                    = true;
+  ShadowmapTechnique currentShadowmapTechnique = eVsm;
+  AATechnique currentAATechnique               = eSsaa;
 
-  bool settingsAreDirty = false;
+  bool settingsAreDirty = true;
 
   struct InputControlMouseEtc
   {
@@ -239,6 +241,7 @@ private:
   void LoadForwardShaders();
   void RebuildCurrentForwardPipeline();
   const char *CurrentForwardProgramName();
+  GBuffer *CurrentGbuffer();
   void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
   // Deferred shading
@@ -246,7 +249,7 @@ private:
   void DeallocateDeferredResources();
   void LoadDeferredShaders();
   void SetupDeferredPipelines();
-  void RebuildCurrentDeferredResolvePipeline();
+  void RebuildCurrentDeferredPipelines();
   const char *CurrentResolveProgramName();
   void RecordGeomPassCommands(VkCommandBuffer a_cmdBuff);
   void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);

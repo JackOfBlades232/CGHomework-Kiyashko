@@ -76,6 +76,7 @@ const char *SimpleShadowmapRender::CurrentForwardProgramName()
   }
 }
 
+
 /// COMMAND BUFFER FILLING
 
 void SimpleShadowmapRender::RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)

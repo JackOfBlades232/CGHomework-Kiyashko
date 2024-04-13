@@ -30,8 +30,14 @@ void SimpleShadowmapRender::DoImGUI()
   if (settingsAreDirty)
   {
     settingsAreDirty = false;
+
+    // Restrictions on settings go here
+    // @TODO(PKiyashko): logging
+    if (useDeferredRendering && currentAATechnique == eMsaa)
+      currentAATechnique = eSsaa;
+
     RebuildCurrentForwardPipeline();
-    RebuildCurrentDeferredResolvePipeline();
+    RebuildCurrentDeferredPipelines();
     resetReprojection = true;
   }
 
@@ -41,8 +47,8 @@ void SimpleShadowmapRender::DoImGUI()
 
 void SimpleShadowmapRender::DeferredChoiceGUI()
 {
-  const char *items[]  = { "Forward", "Deferred" };
-  static const char *currentItem = useDeferredRendering ? items[1] : items[0];
+  const char *items[]     = { "Forward", "Deferred" };
+  const char *currentItem = useDeferredRendering ? items[1] : items[0];
 
   if (ImGui::BeginCombo("##rendering technique", currentItem, ImGuiComboFlags_NoArrowButton))
   { 
@@ -68,8 +74,8 @@ void SimpleShadowmapRender::DeferredChoiceGUI()
 
 void SimpleShadowmapRender::ShadowmapChoiceGUI()
 {
-  const char *items[eShTechMax]  = { "None", "Simple", "VSM", "PCF" };
-  static const char *currentItem = items[currentShadowmapTechnique];
+  const char *items[eShTechMax] = { "None", "Simple", "VSM", "PCF" };
+  const char *currentItem       = items[currentShadowmapTechnique];
 
   ImGuiStyle &style = ImGui::GetStyle();
   float w           = ImGui::CalcItemWidth();
@@ -102,8 +108,8 @@ void SimpleShadowmapRender::ShadowmapChoiceGUI()
 
 void SimpleShadowmapRender::AAChoiceGui()
 {
-  const char *items[]            = { "None", "SSAAx4", "MSAAx4", "TAA (attempt)" };
-  static const char *currentItem = items[currentAATechnique];
+  const char *items[]     = { "None", "SSAAx4", "MSAAx4", "TAA (attempt)" };
+  const char *currentItem = items[currentAATechnique];
 
   ImGuiStyle &style = ImGui::GetStyle();
   float w           = ImGui::CalcItemWidth();

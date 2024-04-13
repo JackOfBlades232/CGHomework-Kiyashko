@@ -84,9 +84,6 @@ void SimpleShadowmapRender::PreparePipelines()
   SetupDeferredPipelines();
   SetupShadowmapPipelines();
   SetupAAPipelines();
-
-  RebuildCurrentForwardPipeline();
-  RebuildCurrentDeferredResolvePipeline();
 }
 
 void SimpleShadowmapRender::LoadShaders()

@@ -65,7 +65,7 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
   auto& pipelineManager = etna::get_context().getPipelineManager();
   m_geometryPipeline    = pipelineManager.createGraphicsPipeline("deferred_gpass",
     {
-      .vertexShaderInput = sceneVertexInputDesc,
+      .vertexShaderInput    = sceneVertexInputDesc,
       .fragmentShaderOutput =
         {
           .colorAttachmentFormats = {vk::Format::eR32G32B32A32Sfloat},
@@ -74,13 +74,13 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
     });
 }
 
-void SimpleShadowmapRender::RebuildCurrentDeferredResolvePipeline()
+void SimpleShadowmapRender::RebuildCurrentDeferredPipelines()
 {
   m_pGbufferResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
       .programName   = CurrentResolveProgramName(),
       .programExists = true,
       .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .extent        = vk::Extent2D{m_width, m_height}
+      .extent        = CurrentRTRect().extent
     });
 }
 
@@ -106,30 +106,42 @@ const char *SimpleShadowmapRender::CurrentResolveProgramName()
   }
 }
 
+SimpleShadowmapRender::GBuffer *SimpleShadowmapRender::CurrentGbuffer()
+{
+  switch (currentAATechnique)
+  {
+  case eSsaa:
+    return &ssaaGbuffer;
+  default:
+    return &gbuffer;
+  }
+}
+
 
 /// COMMAND BUFFER FILLING
 
 void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 {
-  etna::RenderTargetState renderTargets(a_cmdBuff, 
-      vk::Rect2D{0, 0, m_width, m_height},
-      {{.image = gbuffer.normals.get(), .view = gbuffer.normals.getView({})}},
-      {.image = mainViewDepth.get(), .view = mainViewDepth.getView({})});
+  GBuffer *gbuf = CurrentGbuffer();
+  etna::RenderTargetState renderTargets(a_cmdBuff, CurrentRTRect(),
+    {{.image = gbuf->normals.get(), .view = gbuf->normals.getView({})}},
+    {.image = gbuf->depth->get(), .view = gbuf->depth->getView({})});
 
-    vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_geometryPipeline.getVkPipeline());
-    RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
+  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_geometryPipeline.getVkPipeline());
+  RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
 }
 
 void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
 {
+  GBuffer *gbuf = CurrentGbuffer();
   auto attachments = CurrentRTAttachments(a_targetImage, a_targetImageView);
   auto bindings = CurrentRTBindings();
 
   // Gbuffer to dSet 1
   bindings.push_back(
     { 
-      etna::Binding{ 0, gbuffer.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
-      etna::Binding{ 1, gbuffer.depth->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
+      etna::Binding{ 0, gbuf->normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
+      etna::Binding{ 1, gbuf->depth->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
     });
 
   // @TODO(PKiyashko): add ability to pass multiple attachments to postfx rederer? This basically

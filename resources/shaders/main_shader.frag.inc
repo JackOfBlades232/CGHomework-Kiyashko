@@ -10,10 +10,11 @@ layout(location = 0) in VS_OUT
 layout(set = 1, binding = 0) uniform sampler2D gNormal;
 layout(set = 1, binding = 1) uniform sampler2D gDepth;
 
-#define UNPACK_PARAMETERS()                                                                          \
-  const vec3 norm = textureLod(gNormal, surf.texCoord, 0).xyz;                                       \
-  const float _depth = textureLod(gDepth, surf.texCoord, 0).x;                                       \
-  const vec4 _pos_hom = inverse(Params.projViewMatrix) * vec4((2.0*surf.texCoord)-1.0, _depth, 1.0); \
+#define UNPACK_PARAMETERS()                                                                      \
+  const vec2 _texCoord = vec2(surf.texCoord.x, 1.0 - surf.texCoord.y);                           \
+  const vec3 norm = textureLod(gNormal, _texCoord, 0).xyz;                                       \
+  const float _depth = textureLod(gDepth, _texCoord, 0).x;                                       \
+  const vec4 _pos_hom = inverse(Params.projViewMatrix) * vec4((2.0*_texCoord)-1.0, _depth, 1.0); \
   const vec3 pos = (_pos_hom / _pos_hom.w).xyz
 
 #else

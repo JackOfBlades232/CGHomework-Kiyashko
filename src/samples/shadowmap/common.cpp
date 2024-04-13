@@ -44,21 +44,7 @@ vk::Rect2D SimpleShadowmapRender::CurrentRTRect()
 
 const char *SimpleShadowmapRender::CurrentRTProgramName()
 {
-  switch (currentShadowmapTechnique)
-  {
-  case eShTechNone:
-    return useDeferredRendering ? "simple_resolve" : "simple_forward";
-    break;
-  case eSimple:
-    return useDeferredRendering ? "shadow_resolve" : "shadow_forward";
-    break;
-  case ePcf:
-    return useDeferredRendering ? "pcf_resolve" :  "pcf_forward";
-    break;
-  case eVsm:
-    return useDeferredRendering ? "vsm_resolve" : "vsm_forward";
-    break;
-  }
+  return useDeferredRendering ? CurrentResolveProgramName() : CurrentForwardProgramName();
 }
 
 std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings()

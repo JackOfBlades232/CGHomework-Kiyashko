@@ -237,6 +237,7 @@ private:
   // Forward shading
   void LoadForwardShaders();
   void RebuildCurrentForwardPipeline();
+  const char *CurrentForwardProgramName();
   void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
   // Deferred shading
@@ -245,6 +246,7 @@ private:
   void LoadDeferredShaders();
   void SetupDeferredPipelines();
   void RebuildCurrentDeferredResolvePipeline();
+  const char *CurrentResolveProgramName();
   void RecordGeomPassCommands(VkCommandBuffer a_cmdBuff);
   void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 

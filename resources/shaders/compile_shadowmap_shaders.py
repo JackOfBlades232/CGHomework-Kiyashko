@@ -7,7 +7,7 @@ if __name__ == '__main__':
 
     shader_list = [
         "simple.vert", 
-        "quad.vert", 
+        "quad3_vert.vert", 
         "quad.frag", 
         "simple.frag", 
         "simple_shadow.frag", 

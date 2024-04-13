@@ -35,6 +35,7 @@ void SimpleShadowmapRender::AllocateResources()
 
   m_uboMappedMem = constants.map();
 
+  AllocateDeferredResources();
   AllocateShadowmapResources();
   AllocateAAResources();
 }
@@ -59,6 +60,7 @@ void SimpleShadowmapRender::DeallocateResources()
 {
   DeallocateAAResources();
   DeallocateShadowmapResources();
+  DeallocateDeferredResources();
 
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   m_swapchain.Cleanup();

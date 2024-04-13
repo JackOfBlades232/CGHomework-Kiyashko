@@ -41,7 +41,7 @@ void SimpleShadowmapRender::DoImGUI()
 
 void SimpleShadowmapRender::DeferredChoiceGUI()
 {
-  const char *items[eShTechMax]  = { "Forward", "Deferred" };
+  const char *items[]  = { "Forward", "Deferred" };
   static const char *currentItem = useDeferredRendering ? items[1] : items[0];
 
   if (ImGui::BeginCombo("##rendering technique", currentItem, ImGuiComboFlags_NoArrowButton))

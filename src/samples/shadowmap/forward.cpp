@@ -41,7 +41,7 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
     .rasterizationSamples = currentAATechnique == eMsaa ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1
   };
 
-  const char *programName = CurrentRTProgramName();
+  const char *programName = CurrentForwardProgramName();
   m_forwardPipeline = pipelineManager.createGraphicsPipeline(programName,
     { 
       .vertexShaderInput    = sceneVertexInputDesc,
@@ -54,6 +54,27 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipeline()
     });
 }
 
+
+/// TECHNIQUE CHOICE
+
+const char *SimpleShadowmapRender::CurrentForwardProgramName()
+{
+  switch (currentShadowmapTechnique)
+  {
+  case eShTechNone:
+    return "simple_forward";
+    break;
+  case eSimple:
+    return "shadow_forward";
+    break;
+  case ePcf:
+    return "pcf_forward";
+    break;
+  case eVsm:
+    return "vsm_forward";
+    break;
+  }
+}
 
 /// COMMAND BUFFER FILLING
 

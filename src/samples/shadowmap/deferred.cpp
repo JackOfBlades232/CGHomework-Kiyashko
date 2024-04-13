@@ -63,7 +63,7 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
     };
 
   auto& pipelineManager = etna::get_context().getPipelineManager();
-  m_forwardPipeline     = pipelineManager.createGraphicsPipeline("deferred_gpass",
+  m_geometryPipeline    = pipelineManager.createGraphicsPipeline("deferred_gpass",
     {
       .vertexShaderInput = sceneVertexInputDesc,
       .fragmentShaderOutput =
@@ -77,7 +77,7 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
 void SimpleShadowmapRender::RebuildCurrentDeferredResolvePipeline()
 {
   m_pGbufferResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .programName   = CurrentRTProgramName(),
+      .programName   = CurrentResolveProgramName(),
       .programExists = true,
       .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .extent        = vk::Extent2D{m_width, m_height}
@@ -85,11 +85,33 @@ void SimpleShadowmapRender::RebuildCurrentDeferredResolvePipeline()
 }
 
 
+/// TECHNIQUE CHOICE
+
+const char *SimpleShadowmapRender::CurrentResolveProgramName()
+{
+  switch (currentShadowmapTechnique)
+  {
+  case eShTechNone:
+    return "simple_resolve";
+    break;
+  case eSimple:
+    return "shadow_resolve";
+    break;
+  case ePcf:
+    return "pcf_resolve";
+    break;
+  case eVsm:
+    return "vsm_resolve";
+    break;
+  }
+}
+
+
 /// COMMAND BUFFER FILLING
 
 void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 {
-    etna::RenderTargetState renderTargets(a_cmdBuff, 
+  etna::RenderTargetState renderTargets(a_cmdBuff, 
       vk::Rect2D{0, 0, m_width, m_height},
       {{.image = gbuffer.normals.get(), .view = gbuffer.normals.getView({})}},
       {.image = mainViewDepth.get(), .view = mainViewDepth.getView({})});

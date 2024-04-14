@@ -139,15 +139,15 @@ void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
     {.image = gbuf->depth->get(), .view = gbuf->depth->getView({})});
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_geometryPipeline.getVkPipeline());
-  RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
+  RecordDrawSceneCommands(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
 
   RecordDrawTerrainGpassCommands(a_cmdBuff, m_worldViewProj);
 }
 
-void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
+void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff)
 {
   GBuffer *gbuf = CurrentGbuffer();
-  auto attachments = CurrentRTAttachments(a_targetImage, a_targetImageView);
+  auto attachments = CurrentRTAttachments();
   auto bindings = CurrentRTBindings();
 
   // Gbuffer to dSet 1

@@ -1,0 +1,59 @@
+#version 450
+#extension GL_ARB_shader_image_load_store : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+#include "noise.glsl.inc"
+
+layout(local_size_x = VOLFOG_WORK_GROUP_DIM, local_size_y = VOLFOG_WORK_GROUP_DIM) in;
+
+layout(push_constant) uniform params_t
+{
+  mat4 mInvProjView;
+} params;
+
+layout(binding = 0, r32f) uniform image2D fogMap;
+layout(binding = 1)       uniform sampler2D depthTex;
+
+float sdf(vec3 wPos)
+{
+  // @TODO: implement
+  return 0.0;
+}
+
+const float raymarching_step    = 0.2;
+const int raymarching_max_steps = 50;
+
+void main()
+{
+  const ivec2 imgSize = imageSize(fogMap);
+  const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
+  const vec2 texCoord = gl_GlobalInvocationID.xy / vec2(imgSize);
+
+  if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y)
+  {
+    const float depth = textureLod(depthTex, vec2(texCoord.x, 1.0-texCoord.y), 0).x;
+    const vec4 initPosHom = params.mInvProjView * vec4((2.0*texCoord)-1.0, 0.0, 1.0);
+    const vec4 finalPosHom = params.mInvProjView * vec4((2.0*texCoord)-1.0, depth, 1.0);
+
+    const vec4 initPos = initPosHom / initPosHom.w;
+    const vec4 finalPos = finalPosHom / finalPosHom.w;
+
+    vec3 pos = initPos.xyz;
+    float intensity = 0.0;
+    for (int i = 0;
+         i <= min(floor(length(finalPos - initPos) / raymarching_step), raymarching_max_steps-1);
+         ++i)
+    {
+      if (sdf(pos) <= 0.0000001f)
+      {
+        const float noise = perlinNoise(pos, 1, 6, 0.5, 2.0, 0x578437adU);
+        intensity += (noise + 1.0) * 0.5 * 0.02;
+      }
+    }
+
+    imageStore(fogMap, globalCoord, vec4(intensity, 1.0f, 1.0f, 1.0f));
+  }
+}

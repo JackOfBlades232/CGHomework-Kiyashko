@@ -24,6 +24,7 @@ set(RENDER_SOURCE
         shadowmap.cpp
         aa.cpp
         terrain.cpp
+        volfog.cpp
 )
 
 add_executable(shadowmap_renderer main.cpp ../../utils/glfw_window.cpp ${VK_UTILS_SRC} ${SCENE_LOADER_SRC} ${RENDER_SOURCE} ${IMGUI_SRC})

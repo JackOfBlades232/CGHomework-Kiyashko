@@ -53,6 +53,7 @@ public:
 
 private:
   etna::GlobalContext* m_context;
+  etna::Image mainViewRt;
   etna::Image mainViewDepth;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
@@ -81,10 +82,12 @@ private:
   etna::Image taaFrames[2];
   etna::Image *taaCurFrame = &taaFrames[0];
   etna::Image *taaPrevFrame = &taaFrames[1];
-  etna::Image taaRt;
 
   // Terrain
   etna::Image terrainHmap;
+
+  // Volfog
+  etna::Image volfogMap;
 
   VkCommandPool m_commandPool = VK_NULL_HANDLE;
 
@@ -133,6 +136,9 @@ private:
   etna::GraphicsPipeline m_terrainSimpleShadowPipeline, m_terrainVsmPipeline;
   etna::ComputePipeline m_hmapGeneratePipeline;
 
+  // Volfog
+  etna::ComputePipeline m_volfogGeneratePipeline;
+
   // Anti-aliasing
   std::unique_ptr<PostfxRenderer> m_pTaaReprojector;
   
@@ -176,6 +182,8 @@ private:
 
     eAATechMax
   };
+
+  // @TODO(PKiyashko): forward & deferred look a bit different (overall tone), should check out
 
   // Forbidden combinations: msaa + deferred
   bool useDeferredRendering                    = true;
@@ -240,20 +248,25 @@ private:
   void AAChoiceGui();
 
   // Common
-  std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments(
-    VkImage a_targetImage, VkImageView a_targetImageView);
+  std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments();
   etna::RenderTargetState::AttachmentParams CurrentRTDepthAttachment();
+  etna::Image &GetCurrentDepthBuffer();
   vk::Rect2D CurrentRTRect();
   const char *CurrentRTProgramName();
   std::vector<std::vector<etna::Binding>> CurrentRTBindings();
-  void RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
+  void RecordDrawSceneCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
+  void BlitRTToScreen(
+    VkCommandBuffer a_cmdBuff, etna::Image &rt, vk::Extent2D extent, VkFilter filter,
+    VkImage a_targetImage, VkImageView a_targetImageView);
+  void BlitMainRTToScreen(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView) 
+    { BlitRTToScreen(a_cmdBuff, mainViewRt, vk::Extent2D{m_width, m_height}, VK_FILTER_NEAREST, a_targetImage, a_targetImageView); }
 
   // Forward shading
   void LoadForwardShaders();
   void RebuildCurrentForwardPipelines();
   const char *CurrentForwardProgramName();
   GBuffer *CurrentGbuffer();
-  void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
+  void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff);
 
   // Deferred shading
   void AllocateDeferredResources();
@@ -263,7 +276,7 @@ private:
   void RebuildCurrentDeferredPipelines();
   const char *CurrentResolveProgramName();
   void RecordGeomPassCommands(VkCommandBuffer a_cmdBuff);
-  void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
+  void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff);
 
   // Shadowmap techniques
   void AllocateShadowmapResources();
@@ -292,6 +305,14 @@ private:
   void RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
   void RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
   void RecordDrawTerrainToShadowmapCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+
+  // Volfog
+  void AllocateVolfogResources();
+  void DeallocateVolfogResources();
+  void LoadVolfogShaders();
+  void SetupVolfogPipelines();
+  void ReallocateVolfogResources() { AllocateVolfogResources(); }
+  void RecordVolfogCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 };
 
 

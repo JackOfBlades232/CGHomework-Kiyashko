@@ -90,7 +90,7 @@ const char *SimpleShadowmapRender::CurrentForwardProgramName()
 
 /// COMMAND BUFFER FILLING
 
-void SimpleShadowmapRender::RecordForwardPassCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView)
+void SimpleShadowmapRender::RecordForwardPassCommands(VkCommandBuffer a_cmdBuff)
 {
   auto programInfo = etna::get_shader_program(CurrentRTProgramName());
 
@@ -108,14 +108,14 @@ void SimpleShadowmapRender::RecordForwardPassCommands(VkCommandBuffer a_cmdBuff,
 
   etna::RenderTargetState renderTargets(a_cmdBuff, 
     CurrentRTRect(),
-    CurrentRTAttachments(a_targetImage, a_targetImageView),
+    CurrentRTAttachments(),
     CurrentRTDepthAttachment());
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_forwardPipeline.getVkPipeline());
   vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
     m_forwardPipeline.getVkPipelineLayout(), 0, vkSets.size(), vkSets.data(), 0, VK_NULL_HANDLE);
 
-  RecordDrawSceneCmds(a_cmdBuff, m_worldViewProj, m_forwardPipeline.getVkPipelineLayout());
+  RecordDrawSceneCommands(a_cmdBuff, m_worldViewProj, m_forwardPipeline.getVkPipelineLayout());
 
   RecordDrawTerrainForwardCommands(a_cmdBuff, m_worldViewProj);
 }

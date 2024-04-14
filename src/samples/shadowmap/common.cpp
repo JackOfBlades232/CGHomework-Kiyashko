@@ -2,8 +2,7 @@
 
 /// TECHNIQUE CHOICE & BUILDERS
 
-std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::CurrentRTAttachments(
-  VkImage a_targetImage, VkImageView a_targetImageView)
+std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::CurrentRTAttachments()
 {
   switch (currentAATechnique)
   {
@@ -12,22 +11,44 @@ std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::Cu
   case eMsaa:
     return {{msaaRt.get(), msaaRt.getView({})}};
   case eTaa:
-    return {{taaRt.get(), taaRt.getView({})}};
   default:
-    return {{a_targetImage, a_targetImageView}};
+    return {{mainViewRt.get(), mainViewRt.getView({})}};
   }
 }
 
 etna::RenderTargetState::AttachmentParams SimpleShadowmapRender::CurrentRTDepthAttachment()
 {
-  switch (currentAATechnique)
+  if (useDeferredRendering)
+    return {};
+  else
   {
-  case eSsaa:
-    return {ssaaDepth.get(), ssaaDepth.getView({})};
-  case eMsaa:
-    return {msaaDepth.get(), msaaDepth.getView({})};
-  default:
-    return {mainViewDepth.get(), mainViewDepth.getView({})};
+    switch (currentAATechnique)
+    {
+    case eSsaa:
+      return {ssaaDepth.get(), ssaaDepth.getView({})};
+    case eMsaa:
+      return {msaaDepth.get(), msaaDepth.getView({})};
+    default:
+      return {mainViewDepth.get(), mainViewDepth.getView({})};
+    }
+  }
+}
+
+etna::Image &SimpleShadowmapRender::GetCurrentDepthBuffer()
+{
+  if (useDeferredRendering)
+    return *(CurrentGbuffer()->depth);
+  else
+  {
+    switch (currentAATechnique)
+    {
+    case eSsaa:
+      return ssaaDepth;
+    case eMsaa:
+      return msaaDepth;
+    default:
+      return mainViewDepth;
+    }
   }
 }
 
@@ -52,7 +73,7 @@ std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings
   switch (currentShadowmapTechnique)
   {
   case eShTechNone:
-    return {{ etna::Binding{ 0, constants.genBinding() } }};
+    return {{ etna::Binding{0, constants.genBinding()} }};
     break;
 
   case eSimple: 
@@ -81,7 +102,8 @@ std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings
 
 /// COMMAND BUFFER FILLING
 
-void SimpleShadowmapRender::RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout)
+void SimpleShadowmapRender::RecordDrawSceneCommands(
+  VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout)
 {
   VkShaderStageFlags stageFlags = (VK_SHADER_STAGE_VERTEX_BIT);
 
@@ -103,4 +125,49 @@ void SimpleShadowmapRender::RecordDrawSceneCmds(VkCommandBuffer a_cmdBuff, const
     auto mesh_info = m_pScnMgr->GetMeshInfo(inst.mesh_id);
     vkCmdDrawIndexed(a_cmdBuff, mesh_info.m_indNum, 1, mesh_info.m_indexOffset, mesh_info.m_vertexOffset, 0);
   }
+}
+
+void SimpleShadowmapRender::BlitRTToScreen(
+  VkCommandBuffer a_cmdBuff, etna::Image &rt, vk::Extent2D extent, VkFilter filter,
+  VkImage a_targetImage, VkImageView a_targetImageView)
+{
+  etna::set_state(a_cmdBuff, rt.get(), 
+    vk::PipelineStageFlagBits2::eTransfer,
+    vk::AccessFlags2(vk::AccessFlagBits2::eTransferRead),
+    vk::ImageLayout::eTransferSrcOptimal,
+    vk::ImageAspectFlagBits::eColor);
+  etna::set_state(a_cmdBuff, a_targetImage, 
+    vk::PipelineStageFlagBits2::eTransfer,
+    vk::AccessFlags2(vk::AccessFlagBits2::eTransferWrite),
+    vk::ImageLayout::eTransferDstOptimal,
+    vk::ImageAspectFlagBits::eColor);
+  etna::flush_barriers(a_cmdBuff);
+
+  VkImageBlit blit;
+  blit.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  blit.srcSubresource.mipLevel       = 0;
+  blit.srcSubresource.baseArrayLayer = 0;
+  blit.srcSubresource.layerCount     = 1;
+  blit.srcOffsets[0]                 = { 0, 0, 0 };
+  blit.srcOffsets[1]                 = { (int32_t)extent.width, (int32_t)extent.height, 1 };
+  blit.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  blit.dstSubresource.mipLevel       = 0;
+  blit.dstSubresource.baseArrayLayer = 0;
+  blit.dstSubresource.layerCount     = 1;
+  blit.dstOffsets[0]                 = { 0, 0, 0 };
+  blit.dstOffsets[1]                 = { (int32_t)m_width, (int32_t)m_width, 1 };
+
+  vkCmdBlitImage(
+    a_cmdBuff,
+    rt.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    a_targetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    1, &blit,
+    filter);
+  
+  // Separate from present set_states for debug ui drawing
+  etna::set_state(a_cmdBuff, a_targetImage, 
+    vk::PipelineStageFlagBits2::eAllGraphics,
+    vk::AccessFlags2(vk::AccessFlagBits2::eColorAttachmentWrite),
+    vk::ImageLayout::eColorAttachmentOptimal,
+    vk::ImageAspectFlagBits::eColor);
 }

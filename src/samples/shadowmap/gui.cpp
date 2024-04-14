@@ -41,6 +41,7 @@ void SimpleShadowmapRender::DoImGUI()
 
     RebuildCurrentForwardPipelines();
     RebuildCurrentDeferredPipelines();
+    ReallocateVolfogResources();
     resetReprojection = true;
   }
 

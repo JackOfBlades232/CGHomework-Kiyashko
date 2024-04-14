@@ -16,11 +16,18 @@
 
 void SimpleShadowmapRender::AllocateResources()
 {
+  mainViewRt = m_context->createImage(etna::Image::CreateInfo
+  {
+     .extent     = vk::Extent3D{m_width, m_height, 1},
+     .name       = "main_view_rt",
+     .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+     .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
+  });
   mainViewDepth = m_context->createImage(etna::Image::CreateInfo
   {
-    .extent = vk::Extent3D{m_width, m_height, 1},
-    .name = "main_view_depth",
-    .format = vk::Format::eD32Sfloat,
+    .extent     = vk::Extent3D{m_width, m_height, 1},
+    .name       = "main_view_depth",
+    .format     = vk::Format::eD32Sfloat,
     .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
   });
 
@@ -39,6 +46,7 @@ void SimpleShadowmapRender::AllocateResources()
   AllocateShadowmapResources();
   AllocateAAResources();
   AllocateTerrainResources();
+  AllocateVolfogResources();
 }
 
 void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matrices)
@@ -59,11 +67,13 @@ void SimpleShadowmapRender::LoadScene(const char* path, bool transpose_inst_matr
 
 void SimpleShadowmapRender::DeallocateResources()
 {
+  DeallocateVolfogResources();
   DeallocateTerrainResources();
   DeallocateAAResources();
   DeallocateShadowmapResources();
   DeallocateDeferredResources();
 
+  mainViewRt.reset();
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   m_swapchain.Cleanup();
   vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
@@ -80,6 +90,7 @@ void SimpleShadowmapRender::LoadShaders()
   LoadDeferredShaders();
   LoadShadowmapShaders();
   LoadTerrainShaders();
+  LoadVolfogShaders();
 }
 
 void SimpleShadowmapRender::PreparePipelines()
@@ -95,6 +106,7 @@ void SimpleShadowmapRender::PreparePipelines()
   SetupShadowmapPipelines();
   SetupAAPipelines();
   SetupTerrainPipelines();
+  SetupVolfogPipelines();
 }
 
 
@@ -128,16 +140,23 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   //// draw final scene to screen
   //
   if (useDeferredRendering)
-    RecordResolvePassCommands(a_cmdBuff, a_targetImage, a_targetImageView);
+    RecordResolvePassCommands(a_cmdBuff);
   else
-    RecordForwardPassCommands(a_cmdBuff, a_targetImage, a_targetImageView);
+    RecordForwardPassCommands(a_cmdBuff);
 
-  //// Apply aniti-aliasing
+  //// Add volfog
   //
-  RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
+  //RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
+
+  //// Apply aniti-aliasing and blit to screen
+  //
+  if (currentAATechnique != eAATechNone)
+    RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
+  else
+    BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, shadowMap, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, volfogMap, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,

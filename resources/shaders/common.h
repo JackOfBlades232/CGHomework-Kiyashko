@@ -6,9 +6,10 @@
 #define VSM_WORK_GROUP_DIM 16
 #define VSM_WINDOW_HALFSIZE 5
 
+#define HMAP_WORK_GROUP_DIM 16
 #define LANDMESH_DIM 1000
 
-#define HMAP_WORK_GROUP_DIM 18
+#define VOLFOG_WORK_GROUP_DIM 16
 
 #ifdef __cplusplus
 

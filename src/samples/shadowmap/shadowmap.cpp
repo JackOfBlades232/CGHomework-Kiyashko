@@ -126,7 +126,7 @@ void SimpleShadowmapRender::RecordShadowPassCommands(VkCommandBuffer a_cmdBuff)
     colorAttachments, {.image = shadowMap.get(), .view = shadowMap.getView({})});
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline->getVkPipeline());
-  RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());
+  RecordDrawSceneCommands(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());
 
   RecordDrawTerrainToShadowmapCommands(a_cmdBuff, m_lightMatrix);
 }

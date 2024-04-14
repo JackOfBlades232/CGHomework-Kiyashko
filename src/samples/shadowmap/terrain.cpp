@@ -138,10 +138,6 @@ void SimpleShadowmapRender::RecordHmapGenerationCommands(VkCommandBuffer a_cmdBu
   vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
     m_hmapGeneratePipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
-  float seed = m_uniforms.time;
-  vkCmdPushConstants(a_cmdBuff, m_hmapGeneratePipeline.getVkPipelineLayout(),
-    VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(seed), &seed);
-
   uint32_t wgDim = (LANDMESH_DIM - 1) / HMAP_WORK_GROUP_DIM + 1;
   vkCmdDispatch(a_cmdBuff, wgDim, wgDim, 1);
 

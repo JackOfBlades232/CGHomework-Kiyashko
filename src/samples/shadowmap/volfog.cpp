@@ -1,0 +1,66 @@
+#include "shadowmap_render.h"
+
+void SimpleShadowmapRender::AllocateVolfogResources()
+{
+  auto rtRect = CurrentRTRect();
+  volfogMap = m_context->createImage(etna::Image::CreateInfo
+  {
+    .extent = vk::Extent3D{rtRect.extent.width/4, rtRect.extent.height/4, 1},
+    .name = "volfog_map",
+    .format = vk::Format::eR32Sfloat,
+    .imageUsage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled
+  });
+}
+
+void SimpleShadowmapRender::DeallocateVolfogResources()
+{
+  volfogMap.reset();
+}
+
+void SimpleShadowmapRender::LoadVolfogShaders()
+{
+  etna::create_program("generate_volfog", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/generate_volfog.comp.spv"});
+}
+
+void SimpleShadowmapRender::SetupVolfogPipelines()
+{
+  auto& pipelineManager = etna::get_context().getPipelineManager();
+  m_volfogGeneratePipeline  = pipelineManager.createComputePipeline("generate_volfog", {});
+}
+
+// @TODO(PKiyashko): this is also a common occurance, pull out to utils
+void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, const float4x4 &a_wvp)
+{
+  etna::set_state(a_cmdBuff, volfogMap.get(), 
+    vk::PipelineStageFlagBits2::eComputeShader,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderWrite),
+    vk::ImageLayout::eGeneral,
+    vk::ImageAspectFlagBits::eColor);
+  etna::flush_barriers(a_cmdBuff);
+
+  auto programInfo = etna::get_shader_program("generate_volfog");
+  auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff, 
+    { 
+      etna::Binding{0, volfogMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
+      etna::Binding{1, GetCurrentDepthBuffer().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+    });
+  VkDescriptorSet vkSet = set.getVkSet();
+
+  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE, m_volfogGeneratePipeline.getVkPipeline());
+  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_COMPUTE,
+    m_volfogGeneratePipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+  float4x4 invViewProj = inverse4x4(a_wvp);
+  vkCmdPushConstants(a_cmdBuff, m_volfogGeneratePipeline.getVkPipelineLayout(),
+    VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(invViewProj), &invViewProj);
+
+  auto rtRect = CurrentRTRect();
+  uint32_t wgDimX = (rtRect.extent.width/4 - 1) / VOLFOG_WORK_GROUP_DIM + 1;
+  uint32_t wgDimY = (rtRect.extent.height/4 - 1) / VOLFOG_WORK_GROUP_DIM + 1;
+  vkCmdDispatch(a_cmdBuff, wgDimX, wgDimY, 1);
+
+  etna::set_state(a_cmdBuff, volfogMap.get(), vk::PipelineStageFlagBits2::eAllGraphics,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead), vk::ImageLayout::eShaderReadOnlyOptimal,
+    vk::ImageAspectFlagBits::eColor);
+  etna::flush_barriers(a_cmdBuff);
+}

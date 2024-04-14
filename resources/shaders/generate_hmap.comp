@@ -9,11 +9,6 @@
 
 layout(local_size_x = HMAP_WORK_GROUP_DIM, local_size_y = HMAP_WORK_GROUP_DIM) in;
 
-layout(push_constant) uniform params_t
-{
-  float seed;
-} params;
-
 layout(binding = 0, r32f) uniform image2D hmap;
 
 void main()
@@ -22,8 +17,9 @@ void main()
   const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
   const vec2 texCoord = gl_GlobalInvocationID.xy / vec2(imgSize);
 
-  const float noise = (snoise(texCoord * 10.0) + 1.0) * 0.5;
-
   if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y)
+  {
+    const float noise = (snoise(texCoord * 10.0) + 1.0) * 0.5;
     imageStore(hmap, globalCoord, vec4(noise, 1.0f, 1.0f, 1.0f));
+  }
 }

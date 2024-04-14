@@ -68,10 +68,29 @@ void SimpleShadowmapRender::SetupShadowmapPipelines()
           .depthAttachmentFormat = vk::Format::eD16Unorm
         }
     });
+  m_terrainSimpleShadowPipeline = pipelineManager.createGraphicsPipeline("terrain_simple_shadow",
+    {
+      .inputAssemblyConfig  = { .topology = vk::PrimitiveTopology::ePatchList },
+      .tessellationConfig   = { .patchControlPoints = 4 },
+      .fragmentShaderOutput =
+        {
+          .depthAttachmentFormat = vk::Format::eD16Unorm
+        }
+    });
 
   m_vsmShadowPipeline = pipelineManager.createGraphicsPipeline("vsm_shadow",
     {
       .vertexShaderInput = sceneVertexInputDesc,
+      .fragmentShaderOutput =
+        {
+          .colorAttachmentFormats = {vk::Format::eR32G32Sfloat},
+          .depthAttachmentFormat = vk::Format::eD16Unorm
+        }
+    });
+  m_terrainVsmPipeline = pipelineManager.createGraphicsPipeline("terrain_vsm_shadow",
+    {
+      .inputAssemblyConfig  = { .topology = vk::PrimitiveTopology::ePatchList },
+      .tessellationConfig   = { .patchControlPoints = 4 },
       .fragmentShaderOutput =
         {
           .colorAttachmentFormats = {vk::Format::eR32G32Sfloat},
@@ -108,6 +127,8 @@ void SimpleShadowmapRender::RecordShadowPassCommands(VkCommandBuffer a_cmdBuff)
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline->getVkPipeline());
   RecordDrawSceneCmds(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());
+
+  RecordDrawTerrainToShadowmapCommands(a_cmdBuff, m_lightMatrix);
 }
 
 void SimpleShadowmapRender::RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff)

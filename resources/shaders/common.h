@@ -6,7 +6,7 @@
 #define VSM_WORK_GROUP_DIM 16
 #define VSM_WINDOW_HALFSIZE 5
 
-#define LANDMESH_DIM 50
+#define LANDMESH_DIM 1000
 
 #define HMAP_WORK_GROUP_DIM 18
 
@@ -65,7 +65,6 @@ struct UniformParams
   shader_mat4  prevProjViewMatrix;
   shader_float reprojectionCoeff;
   shader_uint  frameCounter;
-  shader_vec2  minMaxHeight;
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

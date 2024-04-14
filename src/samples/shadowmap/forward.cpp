@@ -54,7 +54,8 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipelines()
 
   m_terrainForwardPipeline = pipelineManager.createGraphicsPipeline(CurrentTerrainForwardProgramName(),
     {
-      .vertexShaderInput    = sceneVertexInputDesc,
+      .inputAssemblyConfig  = { .topology = vk::PrimitiveTopology::ePatchList },
+      .tessellationConfig   = { .patchControlPoints = 4 },
       .multisampleConfig    = multisampleConfig,
       .fragmentShaderOutput = 
       {

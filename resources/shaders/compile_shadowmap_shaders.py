@@ -18,7 +18,9 @@ if __name__ == '__main__':
         "pcf_shadow.frag", 
         "taa_simple.frag", 
         "generate_hmap.comp",
-        "terrain.vert"
+        "terrain.vert",
+        "terrain.tesc",
+        "terrain.tese",
     ]
 
     # @TODO(PKiyashko): a more comprehensive naming rule

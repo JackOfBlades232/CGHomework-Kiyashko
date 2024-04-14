@@ -17,11 +17,10 @@ layout(push_constant) uniform params_t
 
 layout(location = 0) out VS_OUT
 {
-    vec3 wPos;
-    vec3 wNorm;
-    vec3 wTangent;
-    vec2 texCoord;
-
+  vec3 wPos;
+  vec3 wNorm;
+  vec3 wTangent;
+  vec2 texCoord;
 } vOut;
 
 out gl_PerVertex { vec4 gl_Position; };

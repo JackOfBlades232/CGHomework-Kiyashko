@@ -75,7 +75,8 @@ void SimpleShadowmapRender::SetupDeferredPipelines()
 
   m_terrainGpassPipeline = pipelineManager.createGraphicsPipeline("terrain_gpass",
     {
-      .vertexShaderInput    = sceneVertexInputDesc,
+      .inputAssemblyConfig  = { .topology = vk::PrimitiveTopology::ePatchList },
+      .tessellationConfig   = { .patchControlPoints = 4 },
       .fragmentShaderOutput =
         {
           .colorAttachmentFormats = {vk::Format::eR32G32B32A32Sfloat},

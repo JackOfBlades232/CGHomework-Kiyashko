@@ -48,7 +48,6 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.time               = a_time;
   m_uniforms.prevProjViewMatrix = m_prevProjViewMatrix;
   m_uniforms.reprojectionCoeff  = CurrentTaaReprojectionCoeff();
-  m_uniforms.minMaxHeight       = terrainMinMaxHeight;
   ++m_uniforms.frameCounter;
 
 

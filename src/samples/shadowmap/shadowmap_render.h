@@ -130,6 +130,7 @@ private:
 
   // Terrain
   etna::GraphicsPipeline m_terrainForwardPipeline, m_terrainGpassPipeline;
+  etna::GraphicsPipeline m_terrainSimpleShadowPipeline, m_terrainVsmPipeline;
   etna::ComputePipeline m_hmapGeneratePipeline;
 
   // Anti-aliasing
@@ -286,9 +287,11 @@ private:
   void LoadTerrainShaders();
   void SetupTerrainPipelines();
   const char *CurrentTerrainForwardProgramName();
+  float4x4 GetCurrentTerrainQuadTransform();
   void RecordHmapGenerationCommands(VkCommandBuffer a_cmdBuff);
   void RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
   void RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void RecordDrawTerrainToShadowmapCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 };
 
 

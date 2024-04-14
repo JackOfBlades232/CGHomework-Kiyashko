@@ -29,28 +29,53 @@ void SimpleShadowmapRender::LoadTerrainShaders()
   etna::create_program("terrain_simple_forward",
     {
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.frag.spv", 
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv"
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
     });
   etna::create_program("terrain_shadow_forward",
     {
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_shadow.frag.spv", 
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv"
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
     });
   etna::create_program("terrain_vsm_forward",
     {
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadow.frag.spv", 
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv"
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
     });
   etna::create_program("terrain_pcf_forward",
     {
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_shadow.frag.spv", 
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv"
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
     });
 
   etna::create_program("terrain_gpass",
     {
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_gpass.frag.spv", 
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv"
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
+    });
+
+  etna::create_program("terrain_simple_shadow", 
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
+    });
+
+  etna::create_program("terrain_vsm_shadow",
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadowmap.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.vert.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tesc.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/terrain.tese.spv"
     });
 }
 
@@ -80,6 +105,16 @@ const char *SimpleShadowmapRender::CurrentTerrainForwardProgramName()
     return "terrain_vsm_forward";
     break;
   }
+}
+
+float4x4 SimpleShadowmapRender::GetCurrentTerrainQuadTransform()
+{
+  const float4x4 terrain_base_transform = translate4x4(float3(-50.f, -5.f, -50.f)) *
+                                          scale4x4(float3(100.f, 1.f, 100.f));
+
+  return translate4x4(float3(0.f, terrainMinMaxHeight.x, 0.f)) *
+         terrain_base_transform * 
+         scale4x4(float3(1.f, (terrainMinMaxHeight.y - terrainMinMaxHeight.x), 1.f));
 }
 
 
@@ -116,8 +151,6 @@ void SimpleShadowmapRender::RecordHmapGenerationCommands(VkCommandBuffer a_cmdBu
   etna::flush_barriers(a_cmdBuff);
 }
 
-static const float4x4 terrain_transform = translate4x4(float3(0.f, -3.f, 0.f)) * scale4x4(float3(0.2f, 1.f, 0.2f));
-
 void SimpleShadowmapRender::RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {
   auto programInfo = etna::get_shader_program(CurrentTerrainForwardProgramName());
@@ -142,21 +175,18 @@ void SimpleShadowmapRender::RecordDrawTerrainForwardCommands(VkCommandBuffer a_c
     m_terrainForwardPipeline.getVkPipelineLayout(), 0, vkSets.size(), vkSets.data(), 0, VK_NULL_HANDLE);
 
   pushConst2M.projView = a_wvp;
-  pushConst2M.model = terrain_transform;
+  pushConst2M.model = GetCurrentTerrainQuadTransform();
   vkCmdPushConstants(a_cmdBuff, m_terrainGpassPipeline.getVkPipelineLayout(),
-    VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst2M), &pushConst2M);
+    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(pushConst2M), &pushConst2M);
 
-  vkCmdDraw(a_cmdBuff, LANDMESH_DIM * LANDMESH_DIM * 6, 1, 0, 0);
+  vkCmdDraw(a_cmdBuff, 4, 1, 0, 0);
 }
 
 void SimpleShadowmapRender::RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {
   auto programInfo = etna::get_shader_program("terrain_gpass");
   auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff,
-    { 
-      etna::Binding{0, constants.genBinding()},
-      etna::Binding{8, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)} 
-    });
+    { etna::Binding{8, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)} });
   VkDescriptorSet vkSet = set.getVkSet();
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_terrainGpassPipeline.getVkPipeline());
@@ -164,9 +194,43 @@ void SimpleShadowmapRender::RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmd
     m_terrainGpassPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
   pushConst2M.projView = a_wvp;
-  pushConst2M.model = terrain_transform;
+  pushConst2M.model = GetCurrentTerrainQuadTransform();
   vkCmdPushConstants(a_cmdBuff, m_terrainGpassPipeline.getVkPipelineLayout(),
-    VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConst2M), &pushConst2M);
+    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(pushConst2M), &pushConst2M);
 
-  vkCmdDraw(a_cmdBuff, LANDMESH_DIM * LANDMESH_DIM * 6, 1, 0, 0);
+  vkCmdDraw(a_cmdBuff, 4, 1, 0, 0);
+}
+
+void SimpleShadowmapRender::RecordDrawTerrainToShadowmapCommands(VkCommandBuffer a_cmdBuff, const float4x4 &a_wvp)
+{
+  const char *programName = nullptr;
+  etna::GraphicsPipeline *pipeline = nullptr;
+  switch (currentShadowmapTechnique)
+  {
+  case eSimple:
+  case ePcf:
+    programName = "terrain_simple_shadow";
+    pipeline    = &m_terrainSimpleShadowPipeline;
+    break;
+  case eVsm:
+    programName = "terrain_vsm_shadow";
+    pipeline    = &m_terrainVsmPipeline;
+    break;
+  }
+
+  auto programInfo = etna::get_shader_program(programName);
+  auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff,
+    { etna::Binding{8, terrainHmap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)} });
+  VkDescriptorSet vkSet = set.getVkSet();
+
+  vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->getVkPipeline());
+  vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    pipeline->getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
+
+  pushConst2M.projView = a_wvp;
+  pushConst2M.model = GetCurrentTerrainQuadTransform();
+  vkCmdPushConstants(a_cmdBuff, pipeline->getVkPipelineLayout(),
+    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, 0, sizeof(pushConst2M), &pushConst2M);
+
+  vkCmdDraw(a_cmdBuff, 4, 1, 0, 0);
 }

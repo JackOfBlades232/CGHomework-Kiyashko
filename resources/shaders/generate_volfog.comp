@@ -34,7 +34,7 @@ void main()
 
   if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y)
   {
-    const float depth = textureLod(depthTex, vec2(texCoord.x, 1.0-texCoord.y), 0).x;
+    const float depth = textureLod(depthTex, texCoord, 0).x;
     const vec4 initPosHom = params.mInvProjView * vec4((2.0*texCoord)-1.0, 0.0, 1.0);
     const vec4 finalPosHom = params.mInvProjView * vec4((2.0*texCoord)-1.0, depth, 1.0);
 

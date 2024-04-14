@@ -37,14 +37,9 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipelines()
 
   auto &pipelineManager = etna::get_context().getPipelineManager();
 
-  vk::PipelineMultisampleStateCreateInfo multisampleConfig{
-    .rasterizationSamples = currentAATechnique == eMsaa ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1
-  };
-
   m_forwardPipeline = pipelineManager.createGraphicsPipeline(CurrentForwardProgramName(),
     { 
       .vertexShaderInput    = sceneVertexInputDesc,
-      .multisampleConfig    = multisampleConfig,
       .fragmentShaderOutput = 
       {
         .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
@@ -56,20 +51,11 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipelines()
     {
       .inputAssemblyConfig  = { .topology = vk::PrimitiveTopology::ePatchList },
       .tessellationConfig   = { .patchControlPoints = 4 },
-      .multisampleConfig    = multisampleConfig,
       .fragmentShaderOutput = 
       {
         .colorAttachmentFormats = {static_cast<vk::Format>(m_swapchain.GetFormat())},
         .depthAttachmentFormat  = vk::Format::eD32Sfloat 
       }
-    });
-
-  m_pVolfogApplier = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .programName      = "apply_volfog",
-      .programExists    = true,
-      .format           = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .sampleCountFlags = multisampleConfig.rasterizationSamples,
-      .extent           = CurrentRTRect().extent
     });
 }
 

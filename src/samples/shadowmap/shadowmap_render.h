@@ -76,7 +76,9 @@ private:
   };
 
   etna::GlobalContext* m_context;
-  RenderTarget mainViewRt;
+
+  RenderTarget mainRt;
+
   etna::Image mainViewDepth;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
@@ -95,11 +97,9 @@ private:
   etna::Image vsmSmoothMomentMap;
 
   // Anti-aliasing
-  // @TODO(PKiyashko): this is a lot of excess resources. Move to recreating instead.
-  RenderTarget ssaaRt;
+  // @TODO(PKiyashko): this is a lot of excess resources. Maybe recreate instead?
+  etna::Image ssaaFrame;
   etna::Image ssaaDepth;
-  RenderTarget msaaRt;
-  etna::Image msaaDepth;
   GBuffer ssaaGbuffer;
 
   etna::Image taaFrames[2];
@@ -197,11 +197,11 @@ private:
   // @TODO(PKiyashko): make use of special MSAA settings in AttacmentParams, provided graciously by Kostya?
   // @TODO(PKiyashko): add different scale settings (xN)
   // @TODO(PKiyashko): proper taa with motion vectors and deferred
+  // @TODO(PKiyashko): Add back msaa with proper depth resolve for postfx and masks for deferred
   enum AATechnique
   {
     eAATechNone = 0,
     eSsaa,
-    eMsaa,
     eTaa,
 
     eAATechMax
@@ -209,10 +209,10 @@ private:
 
   // @TODO(PKiyashko): forward & deferred look a bit different (overall tone), should check out
 
-  // Forbidden combinations: msaa + deferred
   bool useDeferredRendering                    = true;
   ShadowmapTechnique currentShadowmapTechnique = eVsm;
   AATechnique currentAATechnique               = eSsaa;
+  bool volfogEnabled                           = true;
 
   bool needToRegenerateHmap = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
@@ -274,16 +274,18 @@ private:
   // Common
   std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments();
   etna::RenderTargetState::AttachmentParams CurrentRTDepthAttachment();
-  etna::Image &GetCurrentDepthBuffer();
+  etna::Image &GetCurrentResolvedDepthBuffer();
   vk::Rect2D CurrentRTRect();
   const char *CurrentRTProgramName();
   std::vector<std::vector<etna::Binding>> CurrentRTBindings();
   void RecordDrawSceneCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
-  void BlitRTToScreen(
-    VkCommandBuffer a_cmdBuff, etna::Image &rt, vk::Extent2D extent, VkFilter filter,
-    VkImage a_targetImage, VkImageView a_targetImageView);
+  void BlitToTarget(
+    VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView,
+    etna::Image &rt, vk::Extent2D extent, VkFilter filter, 
+    vk::ImageAspectFlags srcAspectFlags = vk::ImageAspectFlagBits::eColor,
+    vk::ImageAspectFlags dstAspectFlags = vk::ImageAspectFlagBits::eColor);
   void BlitMainRTToScreen(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView) 
-    { BlitRTToScreen(a_cmdBuff, mainViewRt.current(), vk::Extent2D{ m_width, m_height }, VK_FILTER_NEAREST, a_targetImage, a_targetImageView); }
+    { BlitToTarget(a_cmdBuff, a_targetImage, a_targetImageView, mainRt.current(), vk::Extent2D{ m_width, m_height }, VK_FILTER_NEAREST); }
 
   // Forward shading
   void LoadForwardShaders();
@@ -314,7 +316,7 @@ private:
   void AllocateAAResources();
   void DeallocateAAResources();
   void SetupAAPipelines();
-  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
+  void RecordAAResolveCommands(VkCommandBuffer a_cmdBuff);
   // @TODO(PKiyashko): this update should be less hacky, more centralized with others
   float CurrentTaaReprojectionCoeff();
 

@@ -16,12 +16,15 @@
 
 void SimpleShadowmapRender::AllocateResources()
 {
-  mainViewRt = RenderTarget(etna::Image::CreateInfo
+  mainRt = RenderTarget(etna::Image::CreateInfo
     {
        .extent     = vk::Extent3D{m_width, m_height, 1},
        .name       = "main_view_rt",
        .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
-       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
+       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment
+                     | vk::ImageUsageFlagBits::eSampled
+                     | vk::ImageUsageFlagBits::eTransferSrc
+                     | vk::ImageUsageFlagBits::eTransferDst
     },
     m_context);
   mainViewDepth = m_context->createImage(etna::Image::CreateInfo
@@ -74,7 +77,7 @@ void SimpleShadowmapRender::DeallocateResources()
   DeallocateShadowmapResources();
   DeallocateDeferredResources();
 
-  mainViewRt.reset();
+  mainRt.reset();
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   m_swapchain.Cleanup();
   vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
@@ -145,16 +148,18 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   else
     RecordForwardPassCommands(a_cmdBuff);
 
+  //// Apply aniti-aliasing
+  //
+  RecordAAResolveCommands(a_cmdBuff);
+
   //// Add volfog
   //
-  RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
+  if (volfogEnabled)
+    RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
 
-  //// Apply aniti-aliasing and blit to screen
+  //// Blit to screen
   //
-  if (currentAATechnique != eAATechNone)
-    RecordAAResolveCommands(a_cmdBuff, a_targetImage, a_targetImageView);
-  else
-    BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);
+  BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
     m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, volfogMap, defaultSampler);

@@ -7,12 +7,10 @@ std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::Cu
   switch (currentAATechnique)
   {
   case eSsaa:
-    return {{ssaaRt.current().get(), ssaaRt.current().getView({})}};
-  case eMsaa:
-    return {{msaaRt.current().get(), msaaRt.current().getView({})}};
+    return {{ssaaFrame.get(), ssaaFrame.getView({})}};
   case eTaa:
   default:
-    return {{mainViewRt.current().get(), mainViewRt.current().getView({})}};
+    return {{mainRt.current().get(), mainRt.current().getView({})}};
   }
 }
 
@@ -26,30 +24,20 @@ etna::RenderTargetState::AttachmentParams SimpleShadowmapRender::CurrentRTDepthA
     {
     case eSsaa:
       return {ssaaDepth.get(), ssaaDepth.getView({})};
-    case eMsaa:
-      return {msaaDepth.get(), msaaDepth.getView({})};
     default:
       return {mainViewDepth.get(), mainViewDepth.getView({})};
     }
   }
 }
 
-etna::Image &SimpleShadowmapRender::GetCurrentDepthBuffer()
+etna::Image &SimpleShadowmapRender::GetCurrentResolvedDepthBuffer()
 {
   if (useDeferredRendering)
     return *(CurrentGbuffer()->depth);
-  else
-  {
-    switch (currentAATechnique)
-    {
-    case eSsaa:
-      return ssaaDepth;
-    case eMsaa:
-      return msaaDepth;
-    default:
-      return mainViewDepth;
-    }
-  }
+  else if (currentAATechnique == eSsaa)
+    return ssaaDepth;
+  else // MSAA resolves depth to mainViewDepth
+    return mainViewDepth;
 }
 
 vk::Rect2D SimpleShadowmapRender::CurrentRTRect()
@@ -127,30 +115,31 @@ void SimpleShadowmapRender::RecordDrawSceneCommands(
   }
 }
 
-void SimpleShadowmapRender::BlitRTToScreen(
-  VkCommandBuffer a_cmdBuff, etna::Image &rt, vk::Extent2D extent, VkFilter filter,
-  VkImage a_targetImage, VkImageView a_targetImageView)
+void SimpleShadowmapRender::BlitToTarget(
+    VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView,
+    etna::Image &rt, vk::Extent2D extent, VkFilter filter, 
+    vk::ImageAspectFlags srcAspectFlags, vk::ImageAspectFlags dstAspectFlags)
 {
   etna::set_state(a_cmdBuff, rt.get(), 
     vk::PipelineStageFlagBits2::eTransfer,
     vk::AccessFlags2(vk::AccessFlagBits2::eTransferRead),
     vk::ImageLayout::eTransferSrcOptimal,
-    vk::ImageAspectFlagBits::eColor);
+    srcAspectFlags);
   etna::set_state(a_cmdBuff, a_targetImage, 
     vk::PipelineStageFlagBits2::eTransfer,
     vk::AccessFlags2(vk::AccessFlagBits2::eTransferWrite),
     vk::ImageLayout::eTransferDstOptimal,
-    vk::ImageAspectFlagBits::eColor);
+    dstAspectFlags);
   etna::flush_barriers(a_cmdBuff);
 
   VkImageBlit blit;
-  blit.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  blit.srcSubresource.aspectMask     = (VkImageAspectFlags)srcAspectFlags;
   blit.srcSubresource.mipLevel       = 0;
   blit.srcSubresource.baseArrayLayer = 0;
   blit.srcSubresource.layerCount     = 1;
   blit.srcOffsets[0]                 = { 0, 0, 0 };
   blit.srcOffsets[1]                 = { (int32_t)extent.width, (int32_t)extent.height, 1 };
-  blit.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  blit.dstSubresource.aspectMask     = (VkImageAspectFlags)dstAspectFlags;
   blit.dstSubresource.mipLevel       = 0;
   blit.dstSubresource.baseArrayLayer = 0;
   blit.dstSubresource.layerCount     = 1;
@@ -163,11 +152,4 @@ void SimpleShadowmapRender::BlitRTToScreen(
     a_targetImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     1, &blit,
     filter);
-  
-  // Separate from present set_states for debug ui drawing
-  etna::set_state(a_cmdBuff, a_targetImage, 
-    vk::PipelineStageFlagBits2::eAllGraphics,
-    vk::AccessFlags2(vk::AccessFlagBits2::eColorAttachmentWrite),
-    vk::ImageLayout::eColorAttachmentOptimal,
-    vk::ImageAspectFlagBits::eColor);
 }

@@ -16,6 +16,7 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::SliderFloat2("Min/max terrain height", (float *)&terrainMinMaxHeight, -10.f, 10.f);
     if (terrainMinMaxHeight.x > terrainMinMaxHeight.y)
       terrainMinMaxHeight.x = terrainMinMaxHeight.y;
+    ImGui::Checkbox("Enable fog", &volfogEnabled);
 
     DeferredChoiceGUI();
     ShadowmapChoiceGUI();
@@ -33,11 +34,6 @@ void SimpleShadowmapRender::DoImGUI()
   if (settingsAreDirty)
   {
     settingsAreDirty = false;
-
-    // Restrictions on settings go here
-    // @TODO(PKiyashko): logging
-    if (useDeferredRendering && currentAATechnique == eMsaa)
-      currentAATechnique = eSsaa;
 
     RebuildCurrentForwardPipelines();
     RebuildCurrentDeferredPipelines();
@@ -112,7 +108,7 @@ void SimpleShadowmapRender::ShadowmapChoiceGUI()
 
 void SimpleShadowmapRender::AAChoiceGui()
 {
-  const char *items[]     = { "None", "SSAAx4", "MSAAx4", "TAA (attempt)" };
+  const char *items[]     = { "None", "SSAAx4", "TAA (attempt)" };
   const char *currentItem = items[currentAATechnique];
 
   ImGuiStyle &style = ImGui::GetStyle();

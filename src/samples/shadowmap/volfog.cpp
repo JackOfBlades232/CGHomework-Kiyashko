@@ -31,6 +31,13 @@ void SimpleShadowmapRender::SetupVolfogPipelines()
 {
   auto& pipelineManager = etna::get_context().getPipelineManager();
   m_volfogGeneratePipeline = pipelineManager.createComputePipeline("generate_volfog", {});
+
+  m_pVolfogApplier = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
+      .programName   = "apply_volfog",
+      .programExists = true,
+      .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .extent        = vk::Extent2D{m_width, m_height}
+    });
 }
 
 // @TODO(PKiyashko): this is also a common occurance, pull out to utils
@@ -43,7 +50,7 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
     vk::AccessFlags2(vk::AccessFlagBits2::eShaderWrite),
     vk::ImageLayout::eGeneral,
     vk::ImageAspectFlagBits::eColor);
-  etna::set_state(a_cmdBuff, GetCurrentDepthBuffer().get(), 
+  etna::set_state(a_cmdBuff, GetCurrentResolvedDepthBuffer().get(), 
     vk::PipelineStageFlagBits2::eComputeShader,
     vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead),
     vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -54,7 +61,7 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
   auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff, 
     { 
       etna::Binding{0, volfogMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
-      etna::Binding{1, GetCurrentDepthBuffer().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{1, GetCurrentResolvedDepthBuffer().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
     });
   VkDescriptorSet vkSet = set.getVkSet();
 
@@ -73,5 +80,10 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
 
   //// Mixin to screen w/ postfx renderer
   //
-  //auto
+  mainRt.flip();
+  m_pVolfogApplier->RecordCommands(a_cmdBuff, mainRt.current().get(), mainRt.current().getView({}), 
+    {{ 
+      etna::Binding{0, mainRt.backup().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{1, volfogMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+    }});
 }

@@ -93,13 +93,6 @@ void SimpleShadowmapRender::RebuildCurrentDeferredPipelines()
       .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .extent        = CurrentRTRect().extent
     });
-
-  m_pVolfogApplier = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .programName   = "apply_volfog",
-      .programExists = true,
-      .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
-      .extent        = CurrentRTRect().extent
-    });
 }
 
 

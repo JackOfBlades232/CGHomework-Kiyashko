@@ -7,12 +7,12 @@ std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::Cu
   switch (currentAATechnique)
   {
   case eSsaa:
-    return {{ssaaRt.get(), ssaaRt.getView({})}};
+    return {{ssaaRt.current().get(), ssaaRt.current().getView({})}};
   case eMsaa:
-    return {{msaaRt.get(), msaaRt.getView({})}};
+    return {{msaaRt.current().get(), msaaRt.current().getView({})}};
   case eTaa:
   default:
-    return {{mainViewRt.get(), mainViewRt.getView({})}};
+    return {{mainViewRt.current().get(), mainViewRt.current().getView({})}};
   }
 }
 

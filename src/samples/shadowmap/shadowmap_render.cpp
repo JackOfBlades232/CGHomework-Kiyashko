@@ -16,13 +16,14 @@
 
 void SimpleShadowmapRender::AllocateResources()
 {
-  mainViewRt = m_context->createImage(etna::Image::CreateInfo
-  {
-     .extent     = vk::Extent3D{m_width, m_height, 1},
-     .name       = "main_view_rt",
-     .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
-     .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
-  });
+  mainViewRt = RenderTarget(etna::Image::CreateInfo
+    {
+       .extent     = vk::Extent3D{m_width, m_height, 1},
+       .name       = "main_view_rt",
+       .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
+    },
+    m_context);
   mainViewDepth = m_context->createImage(etna::Image::CreateInfo
   {
     .extent     = vk::Extent3D{m_width, m_height, 1},
@@ -146,7 +147,7 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
 
   //// Add volfog
   //
-  //RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
+  RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
 
   //// Apply aniti-aliasing and blit to screen
   //

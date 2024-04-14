@@ -20,22 +20,34 @@ void SimpleShadowmapRender::DeallocateVolfogResources()
 void SimpleShadowmapRender::LoadVolfogShaders()
 {
   etna::create_program("generate_volfog", {VK_GRAPHICS_BASIC_ROOT"/resources/shaders/generate_volfog.comp.spv"});
+  etna::create_program("apply_volfog", 
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/apply_volfog.frag.spv",
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
+    });
 }
 
 void SimpleShadowmapRender::SetupVolfogPipelines()
 {
   auto& pipelineManager = etna::get_context().getPipelineManager();
-  m_volfogGeneratePipeline  = pipelineManager.createComputePipeline("generate_volfog", {});
+  m_volfogGeneratePipeline = pipelineManager.createComputePipeline("generate_volfog", {});
 }
 
 // @TODO(PKiyashko): this is also a common occurance, pull out to utils
 void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, const float4x4 &a_wvp)
 {
+  //// Generate volfog map
+  //
   etna::set_state(a_cmdBuff, volfogMap.get(), 
     vk::PipelineStageFlagBits2::eComputeShader,
     vk::AccessFlags2(vk::AccessFlagBits2::eShaderWrite),
     vk::ImageLayout::eGeneral,
     vk::ImageAspectFlagBits::eColor);
+  etna::set_state(a_cmdBuff, GetCurrentDepthBuffer().get(), 
+    vk::PipelineStageFlagBits2::eComputeShader,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead),
+    vk::ImageLayout::eShaderReadOnlyOptimal,
+    vk::ImageAspectFlagBits::eDepth);
   etna::flush_barriers(a_cmdBuff);
 
   auto programInfo = etna::get_shader_program("generate_volfog");
@@ -59,8 +71,7 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
   uint32_t wgDimY = (rtRect.extent.height/4 - 1) / VOLFOG_WORK_GROUP_DIM + 1;
   vkCmdDispatch(a_cmdBuff, wgDimX, wgDimY, 1);
 
-  etna::set_state(a_cmdBuff, volfogMap.get(), vk::PipelineStageFlagBits2::eAllGraphics,
-    vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead), vk::ImageLayout::eShaderReadOnlyOptimal,
-    vk::ImageAspectFlagBits::eColor);
-  etna::flush_barriers(a_cmdBuff);
+  //// Mixin to screen w/ postfx renderer
+  //
+  //auto
 }

@@ -52,8 +52,31 @@ public:
   void DrawFrame(float a_time, DrawMode a_mode) override;
 
 private:
+  class RenderTarget
+  {
+    etna::Image im[2];
+    etna::Image *currentIm;
+    
+  public:
+    RenderTarget() : currentIm(&im[0]) {}
+    RenderTarget(etna::Image::CreateInfo imCreateInfo, etna::GlobalContext *ctx) : currentIm(&im[0])
+      { im[0] = ctx->createImage(imCreateInfo); im[1] = ctx->createImage(imCreateInfo); }
+
+    RenderTarget(RenderTarget &&other) noexcept 
+      { im[0] = std::move(other.im[0]); im[1] = std::move(other.im[1]); other.currentIm = nullptr; }
+    RenderTarget& operator=(RenderTarget &&other) noexcept 
+      { im[0] = std::move(other.im[0]); im[1] = std::move(other.im[1]); other.currentIm = nullptr; return *this; }
+
+    ~RenderTarget() { reset(); }
+
+    void flip() { currentIm = currentIm == &im[0] ? &im[1] : &im[0]; }
+    void reset() { im[0].reset(); im[1].reset(); }
+    etna::Image &current() { return *currentIm; }
+    etna::Image &backup() { return currentIm == &im[0] ? im[1] : im[0]; }
+  };
+
   etna::GlobalContext* m_context;
-  etna::Image mainViewRt;
+  RenderTarget mainViewRt;
   etna::Image mainViewDepth;
   etna::Sampler defaultSampler;
   etna::Buffer constants;
@@ -73,9 +96,9 @@ private:
 
   // Anti-aliasing
   // @TODO(PKiyashko): this is a lot of excess resources. Move to recreating instead.
-  etna::Image ssaaRt;
+  RenderTarget ssaaRt;
   etna::Image ssaaDepth;
-  etna::Image msaaRt;
+  RenderTarget msaaRt;
   etna::Image msaaDepth;
   GBuffer ssaaGbuffer;
 
@@ -138,6 +161,7 @@ private:
 
   // Volfog
   etna::ComputePipeline m_volfogGeneratePipeline;
+  std::unique_ptr<PostfxRenderer> m_pVolfogApplier;
 
   // Anti-aliasing
   std::unique_ptr<PostfxRenderer> m_pTaaReprojector;
@@ -259,7 +283,7 @@ private:
     VkCommandBuffer a_cmdBuff, etna::Image &rt, vk::Extent2D extent, VkFilter filter,
     VkImage a_targetImage, VkImageView a_targetImageView);
   void BlitMainRTToScreen(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView) 
-    { BlitRTToScreen(a_cmdBuff, mainViewRt, vk::Extent2D{m_width, m_height}, VK_FILTER_NEAREST, a_targetImage, a_targetImageView); }
+    { BlitRTToScreen(a_cmdBuff, mainViewRt.current(), vk::Extent2D{ m_width, m_height }, VK_FILTER_NEAREST, a_targetImage, a_targetImageView); }
 
   // Forward shading
   void LoadForwardShaders();

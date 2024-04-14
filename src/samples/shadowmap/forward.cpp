@@ -63,6 +63,14 @@ void SimpleShadowmapRender::RebuildCurrentForwardPipelines()
         .depthAttachmentFormat  = vk::Format::eD32Sfloat 
       }
     });
+
+  m_pVolfogApplier = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
+      .programName      = "apply_volfog",
+      .programExists    = true,
+      .format           = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .sampleCountFlags = multisampleConfig.rasterizationSamples,
+      .extent           = CurrentRTRect().extent
+    });
 }
 
 

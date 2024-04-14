@@ -22,6 +22,7 @@ if __name__ == '__main__':
         "terrain.tesc",
         "terrain.tese",
         "generate_volfog.comp",
+        "apply_volfog.frag",
     ]
 
     # @TODO(PKiyashko): a more comprehensive naming rule

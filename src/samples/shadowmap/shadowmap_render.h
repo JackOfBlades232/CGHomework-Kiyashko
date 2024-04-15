@@ -21,6 +21,16 @@
 #include <etna/RenderTargetStates.hpp>
 
 
+/* @FEATURE(PKiyashko): subpar features that could be better
+* Shaders: organize includes and reuse, remove remnants of pure-forward approach.
+* Code: untwist the architecture, should be more modular. Might as well demolish the renderer structure completely.
+* Deferred: add light volumes and more light sources.
+* AA: MSAA w/ deferred, fix TAA, add motion vectors.
+* Shadows: add ESM for the sake of it.
+* Volfog: fix the distance properties, add sdf clouds, optimize
+* SSAO: optimize, add temporal repro.
+*/
+
 class IRenderGUI;
 
 class SimpleShadowmapRender : public IRender
@@ -59,8 +69,7 @@ private:
     
   public:
     RenderTarget() : currentIm(&im[0]) {}
-    RenderTarget(etna::Image::CreateInfo imCreateInfo, etna::GlobalContext *ctx) : currentIm(&im[0])
-      { im[0] = ctx->createImage(imCreateInfo); im[1] = ctx->createImage(imCreateInfo); }
+    RenderTarget(vk::Extent2D extent, vk::Format format, etna::GlobalContext *ctx, const char *name = nullptr);
 
     RenderTarget(RenderTarget &&other) noexcept 
       { im[0] = std::move(other.im[0]); im[1] = std::move(other.im[1]); other.currentIm = nullptr; }
@@ -79,6 +88,17 @@ private:
   {
     etna::Image normals; 
     etna::Image depth;
+    etna::Image ao, blurredAo;
+
+    GBuffer() = default;
+    GBuffer(vk::Extent2D extent, etna::GlobalContext *ctx, const char *name = nullptr);
+
+    GBuffer(GBuffer &&other) 
+      { normals = std::move(other.normals); depth = std::move(other.depth); ao = std::move(other.ao); blurredAo = std::move(other.blurredAo); }
+    GBuffer &operator=(GBuffer &&other) 
+      { normals = std::move(other.normals); depth = std::move(other.depth); ao = std::move(other.ao); blurredAo = std::move(other.blurredAo); return *this; }
+
+    ~GBuffer() { reset(); }
 
     void reset() { normals.reset(); depth.reset(); }
   };
@@ -111,6 +131,9 @@ private:
   // Volfog
   etna::Image volfogMap;
 
+  // SSAO
+  etna::Buffer ssaoConstants;
+
   VkCommandPool m_commandPool = VK_NULL_HANDLE;
 
   struct
@@ -131,12 +154,16 @@ private:
   } pushConst2M;
 
   float4x4 m_worldViewProj;
+  float4x4 m_proj;
   float4x4 m_lightMatrix;    
 
   // For taa reprojection
   float4x4 m_prevProjViewMatrix;
   float currentReprojectionCoeff = 0.75f;
   bool resetReprojection         = true;
+
+  // For ssao
+  SSAOUniformParams ssaoUniforms {};
 
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
@@ -158,6 +185,10 @@ private:
   // Volfog
   etna::ComputePipeline m_volfogGeneratePipeline;
   std::unique_ptr<PostfxRenderer> m_pVolfogApplier;
+
+  // Ssao
+  std::unique_ptr<PostfxRenderer> m_pSsao;
+  etna::ComputePipeline m_blurSsaoPipeline;
 
   // Anti-aliasing
   std::unique_ptr<PostfxRenderer> m_pTaaReprojector;
@@ -203,14 +234,15 @@ private:
     eAATechMax
   };
 
-  ShadowmapTechnique currentShadowmapTechnique = eVsm;
-  AATechnique currentAATechnique               = eSsaa;
+  ShadowmapTechnique currentShadowmapTechnique = eShTechNone;//eVsm;
+  AATechnique currentAATechnique               = eAATechNone;//eSsaa;
   bool volfogEnabled                           = false;//true;
 
   bool needToRegenerateHmap  = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
   float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
   float4 ambientLightInt     = float4(0.4f, 0.4f, 0.4f, 1.f);
+  float ligthSourceCoeff     = 0.2f;
 
   bool settingsAreDirty = true;
 
@@ -304,6 +336,14 @@ private:
   // @TODO(PKiyashko): this update should be less hacky, more centralized with others
   float CurrentTaaReprojectionCoeff();
 
+  // SSAO
+  void AllocateSSAOResources();
+  void DeallocateSSAOResources();
+  void LoadSSAOShaders();
+  void SetupSSAOPipelines();
+  void RecordSSAOGenerationCommands(VkCommandBuffer a_cmdBuff);
+  void RecordSSAOBlurCommands(VkCommandBuffer a_cmdBuff);
+
   // Terrain
   void AllocateTerrainResources();
   void DeallocateTerrainResources();
@@ -320,7 +360,8 @@ private:
   void LoadVolfogShaders();
   void SetupVolfogPipelines();
   void ReallocateVolfogResources() { AllocateVolfogResources(); }
-  void RecordVolfogCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void RecordVolfogGenerationCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
+  void RecordVolfogApplyCommands(VkCommandBuffer a_cmdBuff);
 };
 
 

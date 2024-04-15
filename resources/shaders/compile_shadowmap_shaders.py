@@ -19,6 +19,8 @@ if __name__ == '__main__':
         "terrain.tese",
         "generate_volfog.comp",
         "apply_volfog.frag",
+        "generate_ssao.frag", 
+        "blur_ssao.comp", 
         "simple.frag", 
         "simple_shadow.frag", 
         "vsm_shadow.frag", 

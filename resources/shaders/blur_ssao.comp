@@ -1,0 +1,77 @@
+#version 450
+#extension GL_ARB_shader_image_load_store : enable
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+layout(local_size_x = SSAO_WORK_GROUP_DIM, local_size_y = SSAO_WORK_GROUP_DIM) in;
+
+// Texture and image considered same size
+// Need separate so that work groups don't race at edges
+layout(binding = 0) uniform sampler2D gAo;
+layout(binding = 1, r32f) uniform image2D gBlurredAo;
+layout(binding = 2) uniform sampler2D gDepth;
+
+shared vec2 textureStorage[SSAO_WORK_GROUP_DIM + 2*SSAO_WINDOW_HALFSIZE][SSAO_WORK_GROUP_DIM + 2*SSAO_WINDOW_HALFSIZE];
+
+void read_data_to_storage(ivec2 coord, ivec2 base, vec2 texSize)
+{
+  const vec2 texCoord = vec2(base + coord)/texSize;
+  textureStorage[coord.y][coord.x].x = textureLod(gAo, texCoord, 0).x;
+  textureStorage[coord.y][coord.x].y = textureLod(gDepth, texCoord, 0).x;
+}
+
+const float depthThreshold = 0.25;
+
+void main() 
+{
+  const ivec2 imgSize = textureSize(gAo, 0);
+  const ivec2 globalCoord = ivec2(gl_GlobalInvocationID.xy);
+  const ivec2 localCoord = ivec2(gl_LocalInvocationID.xy);
+
+  const ivec2 storageCoord = localCoord + ivec2(SSAO_WINDOW_HALFSIZE);
+  const ivec2 storageBase = globalCoord - storageCoord;
+
+  const float depth = textureLod(gDepth, globalCoord/imgSize, 0).x;
+
+  // Fill shared storage
+  // we assert in c++ that SSAO_WINDOW_HALFSIZE < SSAO_WORK_GROUP_DIM
+
+  read_data_to_storage(storageCoord, storageBase, imgSize);
+  if (localCoord.x < SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(SSAO_WINDOW_HALFSIZE, 0), storageBase, imgSize);
+  else if (localCoord.x >= SSAO_WORK_GROUP_DIM - SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(SSAO_WINDOW_HALFSIZE, 0), storageBase, imgSize);
+  if (localCoord.y < SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(0, SSAO_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.y >= SSAO_WORK_GROUP_DIM - SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(0, SSAO_WINDOW_HALFSIZE), storageBase, imgSize);
+
+  if (localCoord.x < SSAO_WINDOW_HALFSIZE && localCoord.y < SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(SSAO_WINDOW_HALFSIZE, SSAO_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.x >= SSAO_WORK_GROUP_DIM - SSAO_WINDOW_HALFSIZE && localCoord.y < SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord - ivec2(-SSAO_WINDOW_HALFSIZE, SSAO_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.x < SSAO_WINDOW_HALFSIZE && localCoord.y >= SSAO_WORK_GROUP_DIM - SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(-SSAO_WINDOW_HALFSIZE, SSAO_WINDOW_HALFSIZE), storageBase, imgSize);
+  else if (localCoord.x >= SSAO_WORK_GROUP_DIM - SSAO_WINDOW_HALFSIZE && localCoord.y >= SSAO_WORK_GROUP_DIM - SSAO_WINDOW_HALFSIZE)
+    read_data_to_storage(storageCoord + ivec2(SSAO_WINDOW_HALFSIZE, SSAO_WINDOW_HALFSIZE), storageBase, imgSize);
+
+  barrier();
+
+  if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y) {
+    float accum = 0.0f;
+    float div = 0.0;
+
+    for (int y = -SSAO_WINDOW_HALFSIZE; y < SSAO_WINDOW_HALFSIZE + 1; ++y)
+      for (int x = -SSAO_WINDOW_HALFSIZE; x < SSAO_WINDOW_HALFSIZE + 1; ++x) {
+        if (abs(textureStorage[storageCoord.y + y][storageCoord.x + x].y - depth) < depthThreshold)
+        {
+          accum += textureStorage[storageCoord.y + y][storageCoord.x + x].x;
+          div += 1.0;
+        }
+      }
+
+    imageStore(gBlurredAo, globalCoord, vec4(accum/div, 1.0f, 1.0f, 1.0f));
+  }
+}

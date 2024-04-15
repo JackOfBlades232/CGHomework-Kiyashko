@@ -11,22 +11,31 @@
 #include <etna/RenderTargetStates.hpp>
 #include <vulkan/vulkan_core.h>
 
+/// RENDER TARGET
+
+SimpleShadowmapRender::RenderTarget::RenderTarget(vk::Extent2D extent, vk::Format format, etna::GlobalContext *ctx, const char *name)
+  : currentIm(&im[0])
+{
+  auto fullName = (name ? std::string(name) : "") + std::string("_rt");
+  etna::Image::CreateInfo info{
+    .extent     = vk::Extent3D{extent.width, extent.height, 1},
+    .name       = fullName,
+    .format     = format,
+    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment
+                  | vk::ImageUsageFlagBits::eSampled
+                  | vk::ImageUsageFlagBits::eTransferSrc
+                  | vk::ImageUsageFlagBits::eTransferDst
+  };
+  im[0] = ctx->createImage(info);
+  im[1] = ctx->createImage(info);
+}
+
 
 /// RESOURCE ALLOCATION
 
 void SimpleShadowmapRender::AllocateResources()
 {
-  mainRt = RenderTarget(etna::Image::CreateInfo
-    {
-       .extent     = vk::Extent3D{m_width, m_height, 1},
-       .name       = "main_view_rt",
-       .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
-       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment
-                     | vk::ImageUsageFlagBits::eSampled
-                     | vk::ImageUsageFlagBits::eTransferSrc
-                     | vk::ImageUsageFlagBits::eTransferDst
-    },
-    m_context);
+  mainRt = RenderTarget(vk::Extent2D{m_width, m_height}, static_cast<vk::Format>(m_swapchain.GetFormat()), m_context, "main_view");
 
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
   constants = m_context->createBuffer(etna::Buffer::CreateInfo
@@ -42,6 +51,7 @@ void SimpleShadowmapRender::AllocateResources()
   AllocateDeferredResources();
   AllocateShadowmapResources();
   AllocateAAResources();
+  AllocateSSAOResources();
   AllocateTerrainResources();
   AllocateVolfogResources();
 }
@@ -66,6 +76,7 @@ void SimpleShadowmapRender::DeallocateResources()
 {
   DeallocateVolfogResources();
   DeallocateTerrainResources();
+  DeallocateSSAOResources();
   DeallocateAAResources();
   DeallocateShadowmapResources();
   DeallocateDeferredResources();
@@ -74,7 +85,7 @@ void SimpleShadowmapRender::DeallocateResources()
   m_swapchain.Cleanup();
   vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
 
-  constants = etna::Buffer();
+  constants.reset();
 }
 
 
@@ -84,6 +95,7 @@ void SimpleShadowmapRender::LoadShaders()
 {
   LoadDeferredShaders();
   LoadShadowmapShaders();
+  LoadSSAOShaders();
   LoadTerrainShaders();
   LoadVolfogShaders();
 }
@@ -100,6 +112,7 @@ void SimpleShadowmapRender::PreparePipelines()
   SetupDeferredPipelines();
   SetupShadowmapPipelines();
   SetupAAPipelines();
+  SetupSSAOPipelines();
   SetupTerrainPipelines();
   SetupVolfogPipelines();
 }
@@ -128,22 +141,27 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordShadowPassCommands(a_cmdBuff);
   RecordShadowmapProcessingCommands(a_cmdBuff);
 
-  // Deferred
+  // Deferred gpass
   RecordGeomPassCommands(a_cmdBuff);
+
+  // Stuff that relies on the gbuffer
+  if (volfogEnabled) RecordVolfogGenerationCommands(a_cmdBuff, m_worldViewProj);
+  RecordSSAOGenerationCommands(a_cmdBuff);
+  RecordSSAOBlurCommands(a_cmdBuff);
+
   RecordResolvePassCommands(a_cmdBuff);
 
-  // Anti-aliasing
+  // Anti-aliasing : resolves aa frame to mainRt
   RecordAAResolveCommands(a_cmdBuff);
 
-  // @TODO(PKiyashko): move depth-based screen space effects to before aa
+  // Postfx stuff that relies on the main rt
+  if (volfogEnabled) RecordVolfogApplyCommands(a_cmdBuff);
 
-  if (volfogEnabled)
-    RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
-
+  // Blit the rt to framebuffer
   BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, volfogMap, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, CurrentGbuffer().ao, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,

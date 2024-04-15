@@ -41,7 +41,7 @@ void SimpleShadowmapRender::SetupVolfogPipelines()
 }
 
 // @TODO(PKiyashko): this is also a common occurance, pull out to utils
-void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, const float4x4 &a_wvp)
+void SimpleShadowmapRender::RecordVolfogGenerationCommands(VkCommandBuffer a_cmdBuff, const float4x4 &a_wvp)
 {
   //// Generate volfog map
   //
@@ -78,9 +78,10 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
   uint32_t wgDimX = (rtRect.extent.width/4 - 1) / VOLFOG_WORK_GROUP_DIM + 1;
   uint32_t wgDimY = (rtRect.extent.height/4 - 1) / VOLFOG_WORK_GROUP_DIM + 1;
   vkCmdDispatch(a_cmdBuff, wgDimX, wgDimY, 1);
+}
 
-  //// Mixin to screen w/ postfx renderer
-  //
+void SimpleShadowmapRender::RecordVolfogApplyCommands(VkCommandBuffer a_cmdBuff)
+{
   mainRt.flip();
   m_pVolfogApplier->RecordCommands(a_cmdBuff, mainRt.current().get(), mainRt.current().getView({}), 
     {{ 

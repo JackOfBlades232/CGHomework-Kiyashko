@@ -27,5 +27,5 @@ void main()
    
   vec3 lightDir   = normalize(Params.lightPos - pos);
   vec4 lightColor = max(dot(norm, lightDir), 0.0f) * lightColor1;
-  out_fragColor   = (lightColor*shadow + Params.ambientLightIntensity) * vec4(Params.baseColor, 1.0f);
+  out_fragColor   = (lightColor*shadow * Params.lightSourcesIntensityCoeff + ambient) * vec4(Params.baseColor, 1.0f);
 }

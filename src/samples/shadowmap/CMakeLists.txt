@@ -19,10 +19,10 @@ set(RENDER_SOURCE
         present.cpp
         gui.cpp
         common.cpp
-        
         deferred.cpp
         shadowmap.cpp
         aa.cpp
+        ssao.cpp
         terrain.cpp
         volfog.cpp
 )

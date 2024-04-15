@@ -1,23 +1,50 @@
 #include "shadowmap_render.h"
 
+/// GBUFFER
+
+SimpleShadowmapRender::GBuffer::GBuffer(vk::Extent2D extent, etna::GlobalContext *ctx, const char *name)
+{
+  std::string nname   = (name ? std::string(name) : "") + std::string("_gbuf_norm");
+  std::string dname   = (name ? std::string(name) : "") + std::string("_gbuf_depth");
+  std::string aoname  = (name ? std::string(name) : "") + std::string("_gbuf_ao");
+  std::string baoname = (name ? std::string(name) : "") + std::string("_gbuf_blurred_ao");
+
+  normals = ctx->createImage(etna::Image::CreateInfo
+    {
+      .extent     = vk::Extent3D{extent.width, extent.height, 1},
+      .name       = nname,
+      .format     = vk::Format::eR32G32B32A32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+    });
+  depth = ctx->createImage(etna::Image::CreateInfo
+    {
+      .extent     = vk::Extent3D{extent.width, extent.height, 1},
+      .name       = dname,
+      .format     = vk::Format::eD32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
+    });
+  ao = ctx->createImage(etna::Image::CreateInfo
+    {
+      .extent     = vk::Extent3D{extent.width, extent.height, 1},
+      .name       = aoname,
+      .format     = vk::Format::eR32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+    });
+  blurredAo = ctx->createImage(etna::Image::CreateInfo
+    {
+      .extent     = vk::Extent3D{extent.width, extent.height, 1},
+      .name       = baoname,
+      .format     = vk::Format::eR32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled
+    });
+}
+
+
 /// RESOURCE ALLOCATION
 
 void SimpleShadowmapRender::AllocateDeferredResources()
 {
-  mainGbuffer.normals = m_context->createImage(etna::Image::CreateInfo
-    {
-      .extent     = vk::Extent3D{m_width, m_height, 1},
-      .name       = "gbuf_normals",
-      .format     = vk::Format::eR32G32B32A32Sfloat,
-      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-    });
-  mainGbuffer.depth = m_context->createImage(etna::Image::CreateInfo
-    {
-      .extent     = vk::Extent3D{m_width, m_height, 1},
-      .name       = "gbuf_depth",
-      .format     = vk::Format::eD32Sfloat,
-      .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
-    });
+  mainGbuffer = GBuffer(vk::Extent2D{m_width, m_height}, m_context, "main");
 }
 
 void SimpleShadowmapRender::DeallocateDeferredResources()
@@ -33,22 +60,22 @@ void SimpleShadowmapRender::LoadDeferredShaders()
 {
   etna::create_program("simple_resolve",
     {
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.frag.spv", 
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
     });
   etna::create_program("shadow_resolve",
     {
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/shadow_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple_shadow.frag.spv", 
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
     });
   etna::create_program("vsm_resolve",
     {
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/vsm_shadow.frag.spv", 
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
     });
   etna::create_program("pcf_resolve",
     {
-      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/pcf_shadow.frag.spv", 
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
     });
 
@@ -96,6 +123,13 @@ void SimpleShadowmapRender::RebuildCurrentDeferredPipelines()
       .programName   = CurrentResolveProgramName(),
       .programExists = true,
       .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .extent        = CurrentRTRect().extent
+    });
+
+  m_pSsao = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
+      .programName   = "generate_ssao",
+      .programExists = true,
+      .format        = vk::Format::eR32Sfloat,
       .extent        = CurrentRTRect().extent
     });
 }
@@ -158,8 +192,9 @@ void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff)
   // Gbuffer to dSet 1
   bindings.push_back(
     { 
-      etna::Binding{ 0, gbuf.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
-      etna::Binding{ 1, gbuf.depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
+      etna::Binding{0, gbuf.depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{1, gbuf.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}, 
+      etna::Binding{2, gbuf.blurredAo.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}, 
     });
 
   // @TODO(PKiyashko): add ability to pass multiple attachments to postfx rederer? This basically

@@ -3,6 +3,8 @@
 
 // GLSL-C++ datatype compatibility layer
 
+#define F_PI 3.14159265359f
+
 #define VSM_WORK_GROUP_DIM 16
 #define VSM_WINDOW_HALFSIZE 5
 
@@ -11,12 +13,18 @@
 
 #define VOLFOG_WORK_GROUP_DIM 16
 
+#define SSAO_KERNEL_SIZE 64
+#define SSAO_TANGENTS_DIM 4
+#define SSAO_WINDOW_HALFSIZE 2
+#define SSAO_WORK_GROUP_DIM 16
+
 #ifdef __cplusplus
 
 #include <LiteMath.h>
 
 #include <cassert>
 static_assert(VSM_WINDOW_HALFSIZE <= VSM_WORK_GROUP_DIM); // for compute shader
+static_assert(SSAO_WINDOW_HALFSIZE <= SSAO_WORK_GROUP_DIM); // for compute shader
 
 // NOTE: This is technically completely wrong,
 // as GLSL words are guaranteed to be 32-bit,
@@ -58,6 +66,7 @@ using shader_bool  = LiteMath::uint;
 struct UniformParams
 {
   shader_mat4  projViewMatrix;
+  shader_mat4  projMatrix;
   shader_mat4  lightMatrix;
   shader_vec3  lightPos;
   shader_float time;
@@ -68,6 +77,13 @@ struct UniformParams
   shader_uint  frameCounter;
   shader_vec4  ambientLightIntensity;
   shader_float reprojectionCoeff;
+  shader_float lightSourcesIntensityCoeff;
+};
+
+struct SSAOUniformParams
+{
+  shader_vec4 kernel[SSAO_KERNEL_SIZE];
+  shader_vec4 tangentBases[SSAO_TANGENTS_DIM*SSAO_TANGENTS_DIM];
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

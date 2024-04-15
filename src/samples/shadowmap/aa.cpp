@@ -7,32 +7,16 @@
 
 void SimpleShadowmapRender::AllocateAAResources()
 {
-  const vk::Extent3D ssaaRtExtent{vk::Extent3D{m_width*2, m_height*2, 1}};
-
+  ssaaGbuffer = GBuffer(vk::Extent2D{m_width * 2, m_height * 2}, m_context, "ssaa");
   ssaaFrame = m_context->createImage(etna::Image::CreateInfo
     {
-      .extent     = ssaaRtExtent,
+      .extent     = vk::Extent3D{m_width*2, m_height*2, 1},
       .name       = "ssaa_rt",
       .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc
     });
-  ssaaGbuffer.normals = m_context->createImage(etna::Image::CreateInfo
-    {
-      .extent     = ssaaRtExtent,
-      .name       = "ssaa_gbuf_normals",
-      .format     = vk::Format::eR32G32B32A32Sfloat,
-      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-    });
-  ssaaGbuffer.depth = m_context->createImage(etna::Image::CreateInfo
-    {
-      .extent     = ssaaRtExtent,
-      .name       = "ssaa_depth",
-      .format     = vk::Format::eD32Sfloat,
-      .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
-    });
 
   const vk::Extent3D taaRtExtent{vk::Extent3D{m_width, m_height, 1}};
-
   taaFrames[0] = m_context->createImage(etna::Image::CreateInfo
   {
     .extent     = taaRtExtent,

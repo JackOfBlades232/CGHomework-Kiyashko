@@ -14,17 +14,16 @@ layout(push_constant) uniform params_t
   mat4 mInvProjView;
 } params;
 
-layout(binding = 0, r32f) uniform image2D fogMap;
-layout(binding = 1)       uniform sampler2D depthTex;
-
-float sdf(vec3 wPos)
+layout(binding = 0, set = 0) uniform AppData
 {
-  // @TODO: implement
-  return 0.0;
-}
+  UniformParams uParams;
+};
+
+layout(binding = 1, r32f) uniform image2D fogMap;
+layout(binding = 2)       uniform sampler2D depthTex;
 
 const float raymarching_step    = 0.2;
-const int raymarching_max_steps = 50;
+const int raymarching_max_steps = 30;
 
 void main()
 {
@@ -42,18 +41,25 @@ void main()
     const vec4 finalPos = finalPosHom / finalPosHom.w;
 
     vec3 pos = initPos.xyz;
+    const vec3 dir = normalize(finalPos - initPos).xyz;
     float intensity = 0.0;
     for (int i = 0;
          i <= min(floor(length(finalPos - initPos) / raymarching_step), raymarching_max_steps-1);
          ++i)
     {
-      if (sdf(pos) <= 0.0000001f)
-      {
-        const float noise = perlinNoise(pos, 1, 6, 0.5, 2.0, 0x578437adU);
-        intensity += (noise + 1.0) * 0.5 * 0.02;
-      }
+      const float distance = i * raymarching_step;
+
+      // Regular fog
+      const float noise = simplex3d_fractal(pos - uParams.windVel * uParams.time);
+      intensity += (noise + 1.0) * 0.5 * 0.05;
+
+      // @TODO(PKiyashko): sdf clouds some day
+      // @TODO(PKiyashko): blue noise to remove raymarching artifacts
+      // @TODO(PKiyashko): volumetric rays w/ sampling shadow map
+
+      pos += dir * raymarching_step;
     }
 
-    imageStore(fogMap, globalCoord, vec4(intensity, 1.0f, 1.0f, 1.0f));
+    imageStore(fogMap, globalCoord, vec4(clamp(intensity, 0.0f, 1.0f), 1.0f, 1.0f, 1.0f));
   }
 }

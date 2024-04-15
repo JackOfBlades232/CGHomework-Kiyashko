@@ -118,28 +118,28 @@ void SimpleShadowmapRender::RecordDrawSceneCommands(
 void SimpleShadowmapRender::BlitToTarget(
     VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView,
     etna::Image &rt, vk::Extent2D extent, VkFilter filter, 
-    vk::ImageAspectFlags srcAspectFlags, vk::ImageAspectFlags dstAspectFlags)
+    vk::ImageAspectFlags aspectFlags)
 {
   etna::set_state(a_cmdBuff, rt.get(), 
     vk::PipelineStageFlagBits2::eTransfer,
     vk::AccessFlags2(vk::AccessFlagBits2::eTransferRead),
     vk::ImageLayout::eTransferSrcOptimal,
-    srcAspectFlags);
+    aspectFlags);
   etna::set_state(a_cmdBuff, a_targetImage, 
     vk::PipelineStageFlagBits2::eTransfer,
     vk::AccessFlags2(vk::AccessFlagBits2::eTransferWrite),
     vk::ImageLayout::eTransferDstOptimal,
-    dstAspectFlags);
+    aspectFlags);
   etna::flush_barriers(a_cmdBuff);
 
   VkImageBlit blit;
-  blit.srcSubresource.aspectMask     = (VkImageAspectFlags)srcAspectFlags;
+  blit.srcSubresource.aspectMask     = (VkImageAspectFlags)aspectFlags;
   blit.srcSubresource.mipLevel       = 0;
   blit.srcSubresource.baseArrayLayer = 0;
   blit.srcSubresource.layerCount     = 1;
   blit.srcOffsets[0]                 = { 0, 0, 0 };
   blit.srcOffsets[1]                 = { (int32_t)extent.width, (int32_t)extent.height, 1 };
-  blit.dstSubresource.aspectMask     = (VkImageAspectFlags)dstAspectFlags;
+  blit.dstSubresource.aspectMask     = (VkImageAspectFlags)aspectFlags;
   blit.dstSubresource.mipLevel       = 0;
   blit.dstSubresource.baseArrayLayer = 0;
   blit.dstSubresource.layerCount     = 1;

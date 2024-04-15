@@ -60,8 +60,9 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
   auto programInfo = etna::get_shader_program("generate_volfog");
   auto set = etna::create_descriptor_set(programInfo.getDescriptorLayoutId(0), a_cmdBuff, 
     { 
-      etna::Binding{0, volfogMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
-      etna::Binding{1, GetCurrentResolvedDepthBuffer().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{0, constants.genBinding()},
+      etna::Binding{1, volfogMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
+      etna::Binding{2, GetCurrentResolvedDepthBuffer().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
     });
   VkDescriptorSet vkSet = set.getVkSet();
 

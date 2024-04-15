@@ -153,7 +153,7 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordAAResolveCommands(a_cmdBuff);
 
   //// Add volfog
-  //
+  // @HUH(PKiyashko): because of volfog tex being smaller, we get aliasing here. Should it be moved to before AA?
   if (volfogEnabled)
     RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
 

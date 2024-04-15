@@ -19,7 +19,7 @@ void main()
 
   if (globalCoord.x < imgSize.x && globalCoord.y < imgSize.y)
   {
-    const float noise = (snoise(texCoord * 10.0) + 1.0) * 0.5;
+    const float noise = (simplex2d(texCoord * 10.0) + 1.0) * 0.5;
     imageStore(hmap, globalCoord, vec4(noise, 1.0f, 1.0f, 1.0f));
   }
 }

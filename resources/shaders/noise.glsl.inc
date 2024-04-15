@@ -6,7 +6,7 @@ vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
 
-float snoise(vec2 v)
+float simplex2d(vec2 v)
 {
   const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
 
@@ -39,147 +39,84 @@ float snoise(vec2 v)
   return 130.0 * dot(m, g);
 }
 
-// implementation of MurmurHash (https://sites.google.com/site/murmurhash/) for a 
-// single unsigned integer.
-uint hash(uint x, uint seed) 
+// Thx to https://www.shadertoy.com/view/XsX3zB
+/* discontinuous pseudorandom uniformly distributed in [-0.5, +0.5]^3 */
+vec3 random3(vec3 c)
 {
-  const uint m = 0x5bd1e995U;
-  uint hash = seed;
-  // process input
-  uint k = x;
-  k *= m;
-  k ^= k >> 24;
-  k *= m;
-  hash *= m;
-  hash ^= k;
-  // some final mixing
-  hash ^= hash >> 13;
-  hash *= m;
-  hash ^= hash >> 15;
-  return hash;
+  float j = 4096.0*sin(dot(c,vec3(17.0, 59.4, 15.0)));
+  vec3 r;
+  r.z = fract(512.0*j);
+  j *= .125;
+  r.x = fract(512.0*j);
+  j *= .125;
+  r.y = fract(512.0*j);
+  return r-0.5;
 }
 
-// implementation of MurmurHash (https://sites.google.com/site/murmurhash/) for a  
-// 3-dimensional unsigned integer input vector.
-uint hash(uvec3 x, uint seed)
+/* skew constants for 3d simplex functions */
+const float F3 = 0.3333333;
+const float G3 = 0.1666667;
+
+/* 3d simplex noise */
+float simplex3d(vec3 p) 
 {
-  const uint m = 0x5bd1e995U;
-  uint hash = seed;
-  // process first vector element
-  uint k = x.x; 
-  k *= m;
-  k ^= k >> 24;
-  k *= m;
-  hash *= m;
-  hash ^= k;
-  // process second vector element
-  k = x.y; 
-  k *= m;
-  k ^= k >> 24;
-  k *= m;
-  hash *= m;
-  hash ^= k;
-  // process third vector element
-  k = x.z; 
-  k *= m;
-  k ^= k >> 24;
-  k *= m;
-  hash *= m;
-  hash ^= k;
-  // some final mixing
-  hash ^= hash >> 13;
-  hash *= m;
-  hash ^= hash >> 15;
-  return hash;
+  /* 1. find current tetrahedron T and it's four vertices */
+  /* s, s+i1, s+i2, s+1.0 - absolute skewed (integer) coordinates of T vertices */
+  /* x, x1, x2, x3 - unskewed coordinates of p relative to each of T vertices*/
+
+  /* calculate s and x */
+  vec3 s = floor(p + dot(p, vec3(F3)));
+  vec3 x = p - s + dot(s, vec3(G3));
+
+  /* calculate i1 and i2 */
+  vec3 e = step(vec3(0.0), x - x.yzx);
+  vec3 i1 = e*(1.0 - e.zxy);
+  vec3 i2 = 1.0 - e.zxy*(1.0 - e);
+      
+  /* x1, x2, x3 */
+  vec3 x1 = x - i1 + G3;
+  vec3 x2 = x - i2 + 2.0*G3;
+  vec3 x3 = x - 1.0 + 3.0*G3;
+
+  /* 2. find four surflets and store them in d */
+  vec4 w, d;
+
+  /* calculate surflet weights */
+  w.x = dot(x, x);
+  w.y = dot(x1, x1);
+  w.z = dot(x2, x2);
+  w.w = dot(x3, x3);
+
+  /* w fades from 0.6 at the center of the surflet to 0.0 at the margin */
+  w = max(0.6 - w, 0.0);
+
+  /* calculate surflet components */
+  d.x = dot(random3(s), x);
+  d.y = dot(random3(s + i1), x1);
+  d.z = dot(random3(s + i2), x2);
+  d.w = dot(random3(s + 1.0), x3);
+
+  /* multiply d by w^4 */
+  w *= w;
+  w *= w;
+  d *= w;
+
+  /* 3. return the sum of the four surflets */
+  return dot(d, vec4(52.0));
 }
 
+/* const matrices for 3d rotation */
+const mat3 rot1 = mat3(-0.37, 0.36, 0.85,-0.14,-0.93, 0.34,0.92, 0.01,0.4);
+const mat3 rot2 = mat3(-0.55,-0.39, 0.74, 0.33,-0.91,-0.24,0.77, 0.12,0.63);
+const mat3 rot3 = mat3(-0.71, 0.52,-0.47,-0.08,-0.72,-0.68,-0.7,-0.45,0.56);
 
-// Thx to TheTurk for his Fast Improved 3D Perlin Noise
-vec3 gradientDirection(uint hash) 
+/* directional artifacts can be reduced by rotating each octave */
+float simplex3d_fractal(vec3 m) 
 {
-  switch (int(hash) & 15) // look at the last four bits to pick a gradient direction
-  {
-  case 0:
-      return vec3(1, 1, 0);
-  case 1:
-      return vec3(-1, 1, 0);
-  case 2:
-      return vec3(1, -1, 0);
-  case 3:
-      return vec3(-1, -1, 0);
-  case 4:
-      return vec3(1, 0, 1);
-  case 5:
-      return vec3(-1, 0, 1);
-  case 6:
-      return vec3(1, 0, -1);
-  case 7:
-      return vec3(-1, 0, -1);
-  case 8:
-      return vec3(0, 1, 1);
-  case 9:
-      return vec3(0, -1, 1);
-  case 10:
-      return vec3(0, 1, -1);
-  case 11:
-      return vec3(0, -1, -1);
-  case 12:
-      return vec3(1, 1, 0);
-  case 13:
-      return vec3(-1, 1, 0);
-  case 14:
-      return vec3(0, -1, 1);
-  case 15:
-      return vec3(0, -1, -1);
-  }
-}
-
-float interpolate(float value1, float value2, float value3, float value4, 
-                  float value5, float value6, float value7, float value8, 
-                  vec3 t)
-{
-  return mix(
-    mix(mix(value1, value2, t.x), mix(value3, value4, t.x), t.y),
-    mix(mix(value5, value6, t.x), mix(value7, value8, t.x), t.y),
-    t.z);
-}
-
-vec3 fade(vec3 t)
-{
-  // 6t^5 - 15t^4 + 10t^3
-  return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
-}
-
-float perlinNoise(vec3 position, uint seed) 
-{
-  vec3 floorPosition = floor(position);
-  vec3 fractPosition = position - floorPosition;
-  uvec3 cellCoordinates = uvec3(floorPosition);
-  float value1 = dot(gradientDirection(hash(cellCoordinates, seed)), fractPosition);
-  float value2 = dot(gradientDirection(hash((cellCoordinates + uvec3(1, 0, 0)), seed)), fractPosition - vec3(1, 0, 0));
-  float value3 = dot(gradientDirection(hash((cellCoordinates + uvec3(0, 1, 0)), seed)), fractPosition - vec3(0, 1, 0));
-  float value4 = dot(gradientDirection(hash((cellCoordinates + uvec3(1, 1, 0)), seed)), fractPosition - vec3(1, 1, 0));
-  float value5 = dot(gradientDirection(hash((cellCoordinates + uvec3(0, 0, 1)), seed)), fractPosition - vec3(0, 0, 1));
-  float value6 = dot(gradientDirection(hash((cellCoordinates + uvec3(1, 0, 1)), seed)), fractPosition - vec3(1, 0, 1));
-  float value7 = dot(gradientDirection(hash((cellCoordinates + uvec3(0, 1, 1)), seed)), fractPosition - vec3(0, 1, 1));
-  float value8 = dot(gradientDirection(hash((cellCoordinates + uvec3(1, 1, 1)), seed)), fractPosition - vec3(1, 1, 1));
-  return interpolate(value1, value2, value3, value4, value5, value6, value7, value8, fade(fractPosition));
-}
-
-float perlinNoise(vec3 position, int frequency, int octaveCount, float persistence, float lacunarity, uint seed) 
-{
-  float value = 0.0;
-  float amplitude = 1.0;
-  float currentFrequency = float(frequency);
-  uint currentSeed = seed;
-  for (int i = 0; i < octaveCount; i++) 
-  {
-    currentSeed = hash(currentSeed, 0x0U); // create a new seed for each octave
-    value += perlinNoise(position * currentFrequency, currentSeed) * amplitude;
-    amplitude *= persistence;
-    currentFrequency *= lacunarity;
-  }
-  return value;
+  return 0.5333333*simplex3d(m*rot1) +
+         0.2666667*simplex3d(2.0*m*rot2) +
+         0.1333333*simplex3d(4.0*m*rot3) +
+         0.0666667*simplex3d(8.0*m);
 }
 
 #endif

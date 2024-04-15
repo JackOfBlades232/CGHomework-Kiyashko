@@ -214,8 +214,9 @@ private:
   AATechnique currentAATechnique               = eSsaa;
   bool volfogEnabled                           = true;
 
-  bool needToRegenerateHmap = true;
+  bool needToRegenerateHmap  = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
+  float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
 
   bool settingsAreDirty = true;
 
@@ -282,8 +283,7 @@ private:
   void BlitToTarget(
     VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView,
     etna::Image &rt, vk::Extent2D extent, VkFilter filter, 
-    vk::ImageAspectFlags srcAspectFlags = vk::ImageAspectFlagBits::eColor,
-    vk::ImageAspectFlags dstAspectFlags = vk::ImageAspectFlagBits::eColor);
+    vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor);
   void BlitMainRTToScreen(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView) 
     { BlitToTarget(a_cmdBuff, a_targetImage, a_targetImageView, mainRt.current(), vk::Extent2D{ m_width, m_height }, VK_FILTER_NEAREST); }
 

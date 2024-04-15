@@ -12,8 +12,12 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::Begin("Simple render settings");
 
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
+    ImGui::SameLine();
+    ImGui::ColorEdit3("Ambient light color", ambientLightInt.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
+
+
     ImGui::SliderFloat3("Light source position", m_light.cam.pos.M, -10.f, 10.f);
-    ImGui::SliderFloat2("Min/max terrain height", (float *)&terrainMinMaxHeight, -10.f, 10.f);
+    ImGui::SliderFloat2("Min/max terrain height", terrainMinMaxHeight.M, -10.f, 10.f);
     if (terrainMinMaxHeight.x > terrainMinMaxHeight.y)
       terrainMinMaxHeight.x = terrainMinMaxHeight.y;
     ImGui::Checkbox("Enable fog", &volfogEnabled);

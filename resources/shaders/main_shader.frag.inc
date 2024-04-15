@@ -17,6 +17,11 @@ layout(set = 1, binding = 1) uniform sampler2D gDepth;
   const vec2 _texCoord = vec2(surf.texCoord.x, 1.0 - surf.texCoord.y);                           \
   const vec3 norm = textureLod(gNormal, _texCoord, 0).xyz;                                       \
   const float _depth = textureLod(gDepth, _texCoord, 0).x;                                       \
+  if (_depth > 0.9999f)                                                                          \
+  {                                                                                              \
+    out_fragColor = vec4(vec3(0.0), 1.0);                                                        \
+    return;                                                                                      \
+  }                                                                                              \
   const vec4 _pos_hom = inverse(Params.projViewMatrix) * vec4((2.0*_texCoord)-1.0, _depth, 1.0); \
   const vec3 pos = (_pos_hom / _pos_hom.w).xyz
 

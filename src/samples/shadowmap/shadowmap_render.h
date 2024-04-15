@@ -207,16 +207,15 @@ private:
     eAATechMax
   };
 
-  // @TODO(PKiyashko): forward & deferred look a bit different (overall tone), should check out
-
   bool useDeferredRendering                    = true;
   ShadowmapTechnique currentShadowmapTechnique = eVsm;
   AATechnique currentAATechnique               = eSsaa;
-  bool volfogEnabled                           = true;
+  bool volfogEnabled                           = false;//true;
 
   bool needToRegenerateHmap  = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
   float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
+  float4 ambientLightInt     = float4(0.4f, 0.4f, 0.4f, 1.f);
 
   bool settingsAreDirty = true;
 

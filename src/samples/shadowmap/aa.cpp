@@ -16,21 +16,20 @@ void SimpleShadowmapRender::AllocateAAResources()
       .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc
     });
-  ssaaDepth = m_context->createImage(etna::Image::CreateInfo
-  {
-    .extent     = ssaaRtExtent,
-    .name       = "ssaa_depth",
-    .format     = vk::Format::eD32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
-  });
   ssaaGbuffer.normals = m_context->createImage(etna::Image::CreateInfo
-  {
-    .extent     = ssaaRtExtent,
-    .name       = "ssaa_gbuf_normals",
-    .format     = vk::Format::eR32G32B32A32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-  });
-  ssaaGbuffer.depth = &ssaaDepth;
+    {
+      .extent     = ssaaRtExtent,
+      .name       = "ssaa_gbuf_normals",
+      .format     = vk::Format::eR32G32B32A32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+    });
+  ssaaGbuffer.depth = m_context->createImage(etna::Image::CreateInfo
+    {
+      .extent     = ssaaRtExtent,
+      .name       = "ssaa_depth",
+      .format     = vk::Format::eD32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
+    });
 
   const vk::Extent3D taaRtExtent{vk::Extent3D{m_width, m_height, 1}};
 
@@ -53,8 +52,7 @@ void SimpleShadowmapRender::AllocateAAResources()
 void SimpleShadowmapRender::DeallocateAAResources()
 {
   ssaaFrame.reset();
-  ssaaDepth.reset();
-  ssaaGbuffer.normals.reset();
+  ssaaGbuffer.reset();
 
   taaFrames[0].reset();
   taaFrames[1].reset();
@@ -94,7 +92,7 @@ void SimpleShadowmapRender::RecordAAResolveCommands(VkCommandBuffer a_cmdBuff)
         etna::Binding{0, constants.genBinding()}, 
         etna::Binding{1, mainRt.current().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
         etna::Binding{2, taaPrevFrame->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
-        etna::Binding{3, mainViewDepth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
+        etna::Binding{3, mainGbuffer.depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
       }});
 
     BlitToTarget(

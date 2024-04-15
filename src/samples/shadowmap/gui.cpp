@@ -22,7 +22,6 @@ void SimpleShadowmapRender::DoImGUI()
       terrainMinMaxHeight.x = terrainMinMaxHeight.y;
     ImGui::Checkbox("Enable fog", &volfogEnabled);
 
-    DeferredChoiceGUI();
     ShadowmapChoiceGUI();
     AAChoiceGui();
 
@@ -39,7 +38,6 @@ void SimpleShadowmapRender::DoImGUI()
   {
     settingsAreDirty = false;
 
-    RebuildCurrentForwardPipelines();
     RebuildCurrentDeferredPipelines();
     ReallocateVolfogResources();
     resetReprojection = true;
@@ -47,33 +45,6 @@ void SimpleShadowmapRender::DoImGUI()
 
   // Rendering
   ImGui::Render();
-}
-
-void SimpleShadowmapRender::DeferredChoiceGUI()
-{
-  const char *items[]     = { "Forward", "Deferred" };
-  const char *currentItem = useDeferredRendering ? items[1] : items[0];
-
-  if (ImGui::BeginCombo("##rendering technique", currentItem, ImGuiComboFlags_NoArrowButton))
-  { 
-    for (int i = 0; i < IM_ARRAYSIZE(items); i++)
-    {
-      bool selected = (currentItem == items[i]);
-      if (ImGui::Selectable(items[i], selected))
-      {
-        currentItem = items[i];
-        if (useDeferredRendering != (i == 1))
-          settingsAreDirty = true;
-        useDeferredRendering = i == 1;
-      }
-      if (selected)
-      {
-        ImGui::SetItemDefaultFocus();
-      }
-    }
-
-    ImGui::EndCombo();
-  }
 }
 
 void SimpleShadowmapRender::ShadowmapChoiceGUI()

@@ -4,20 +4,25 @@
 
 void SimpleShadowmapRender::AllocateDeferredResources()
 {
-  gbuffer.normals = m_context->createImage(etna::Image::CreateInfo
-  {
-    .extent     = vk::Extent3D{m_width, m_height, 1},
-    .name       = "gbuf_normals",
-    .format     = vk::Format::eR32G32B32A32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-  });
-
-  gbuffer.depth = &mainViewDepth;
+  mainGbuffer.normals = m_context->createImage(etna::Image::CreateInfo
+    {
+      .extent     = vk::Extent3D{m_width, m_height, 1},
+      .name       = "gbuf_normals",
+      .format     = vk::Format::eR32G32B32A32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+    });
+  mainGbuffer.depth = m_context->createImage(etna::Image::CreateInfo
+    {
+      .extent     = vk::Extent3D{m_width, m_height, 1},
+      .name       = "gbuf_depth",
+      .format     = vk::Format::eD32Sfloat,
+      .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
+    });
 }
 
 void SimpleShadowmapRender::DeallocateDeferredResources()
 {
-  gbuffer.normals.reset();
+  mainGbuffer.reset();
 }
 
 
@@ -117,14 +122,14 @@ const char *SimpleShadowmapRender::CurrentResolveProgramName()
   }
 }
 
-SimpleShadowmapRender::GBuffer *SimpleShadowmapRender::CurrentGbuffer()
+SimpleShadowmapRender::GBuffer &SimpleShadowmapRender::CurrentGbuffer()
 {
   switch (currentAATechnique)
   {
   case eSsaa:
-    return &ssaaGbuffer;
+    return ssaaGbuffer;
   default:
-    return &gbuffer;
+    return mainGbuffer;
   }
 }
 
@@ -133,10 +138,10 @@ SimpleShadowmapRender::GBuffer *SimpleShadowmapRender::CurrentGbuffer()
 
 void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 {
-  GBuffer *gbuf = CurrentGbuffer();
+  GBuffer &gbuf = CurrentGbuffer();
   etna::RenderTargetState renderTargets(a_cmdBuff, CurrentRTRect(),
-    {{.image = gbuf->normals.get(), .view = gbuf->normals.getView({})}},
-    {.image = gbuf->depth->get(), .view = gbuf->depth->getView({})});
+    {{.image = gbuf.normals.get(), .view = gbuf.normals.getView({})}},
+    {.image = gbuf.depth.get(), .view = gbuf.depth.getView({})});
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_geometryPipeline.getVkPipeline());
   RecordDrawSceneCommands(a_cmdBuff, m_worldViewProj, m_geometryPipeline.getVkPipelineLayout());
@@ -146,15 +151,15 @@ void SimpleShadowmapRender::RecordGeomPassCommands(VkCommandBuffer a_cmdBuff)
 
 void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff)
 {
-  GBuffer *gbuf = CurrentGbuffer();
+  GBuffer &gbuf = CurrentGbuffer();
   auto attachments = CurrentRTAttachments();
   auto bindings = CurrentRTBindings();
 
   // Gbuffer to dSet 1
   bindings.push_back(
     { 
-      etna::Binding{ 0, gbuf->normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
-      etna::Binding{ 1, gbuf->depth->genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
+      etna::Binding{ 0, gbuf.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) }, 
+      etna::Binding{ 1, gbuf.depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal) } 
     });
 
   // @TODO(PKiyashko): add ability to pass multiple attachments to postfx rederer? This basically

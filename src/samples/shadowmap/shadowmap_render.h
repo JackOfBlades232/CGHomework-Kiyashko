@@ -75,21 +75,21 @@ private:
     etna::Image &backup() { return currentIm == &im[0] ? im[1] : im[0]; }
   };
 
-  etna::GlobalContext* m_context;
-
-  RenderTarget mainRt;
-
-  etna::Image mainViewDepth;
-  etna::Sampler defaultSampler;
-  etna::Buffer constants;
-
-  // Deferred
   struct GBuffer
   {
     etna::Image normals; 
-    etna::Image *depth;
+    etna::Image depth;
+
+    void reset() { normals.reset(); depth.reset(); }
   };
-  GBuffer gbuffer;
+
+  etna::GlobalContext* m_context;
+
+  etna::Sampler defaultSampler;
+  etna::Buffer constants;
+
+  RenderTarget mainRt;
+  GBuffer mainGbuffer;
 
   // Shadow maps
   etna::Image shadowMap;
@@ -99,7 +99,6 @@ private:
   // Anti-aliasing
   // @TODO(PKiyashko): this is a lot of excess resources. Maybe recreate instead?
   etna::Image ssaaFrame;
-  etna::Image ssaaDepth;
   GBuffer ssaaGbuffer;
 
   etna::Image taaFrames[2];
@@ -137,13 +136,10 @@ private:
   // For taa reprojection
   float4x4 m_prevProjViewMatrix;
   float currentReprojectionCoeff = 0.75f;
-  bool resetReprojection = true;
+  bool resetReprojection         = true;
 
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
-
-  // Forward
-  etna::GraphicsPipeline m_forwardPipeline {};
 
   // Deferred
   etna::GraphicsPipeline m_geometryPipeline {};
@@ -155,7 +151,7 @@ private:
   etna::ComputePipeline  m_vsmFilteringPipeline {};
 
   // Terrain
-  etna::GraphicsPipeline m_terrainForwardPipeline, m_terrainGpassPipeline;
+  etna::GraphicsPipeline m_terrainGpassPipeline;
   etna::GraphicsPipeline m_terrainSimpleShadowPipeline, m_terrainVsmPipeline;
   etna::ComputePipeline m_hmapGeneratePipeline;
 
@@ -207,7 +203,6 @@ private:
     eAATechMax
   };
 
-  bool useDeferredRendering                    = true;
   ShadowmapTechnique currentShadowmapTechnique = eVsm;
   AATechnique currentAATechnique               = eSsaa;
   bool volfogEnabled                           = false;//true;
@@ -267,16 +262,12 @@ private:
   void ResetPresentStuff();
 
   void DoImGUI();
-  void DeferredChoiceGUI();
   void ShadowmapChoiceGUI();
   void AAChoiceGui();
 
   // Common
   std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments();
-  etna::RenderTargetState::AttachmentParams CurrentRTDepthAttachment();
-  etna::Image &GetCurrentResolvedDepthBuffer();
   vk::Rect2D CurrentRTRect();
-  const char *CurrentRTProgramName();
   std::vector<std::vector<etna::Binding>> CurrentRTBindings();
   void RecordDrawSceneCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
   void BlitToTarget(
@@ -286,19 +277,13 @@ private:
   void BlitMainRTToScreen(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView) 
     { BlitToTarget(a_cmdBuff, a_targetImage, a_targetImageView, mainRt.current(), vk::Extent2D{ m_width, m_height }, VK_FILTER_NEAREST); }
 
-  // Forward shading
-  void LoadForwardShaders();
-  void RebuildCurrentForwardPipelines();
-  const char *CurrentForwardProgramName();
-  GBuffer *CurrentGbuffer();
-  void RecordForwardPassCommands(VkCommandBuffer a_cmdBuff);
-
   // Deferred shading
   void AllocateDeferredResources();
   void DeallocateDeferredResources();
   void LoadDeferredShaders();
   void SetupDeferredPipelines();
   void RebuildCurrentDeferredPipelines();
+  GBuffer &CurrentGbuffer();
   const char *CurrentResolveProgramName();
   void RecordGeomPassCommands(VkCommandBuffer a_cmdBuff);
   void RecordResolvePassCommands(VkCommandBuffer a_cmdBuff);
@@ -324,10 +309,8 @@ private:
   void DeallocateTerrainResources();
   void LoadTerrainShaders();
   void SetupTerrainPipelines();
-  const char *CurrentTerrainForwardProgramName();
   float4x4 GetCurrentTerrainQuadTransform();
   void RecordHmapGenerationCommands(VkCommandBuffer a_cmdBuff);
-  void RecordDrawTerrainForwardCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
   void RecordDrawTerrainGpassCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
   void RecordDrawTerrainToShadowmapCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 

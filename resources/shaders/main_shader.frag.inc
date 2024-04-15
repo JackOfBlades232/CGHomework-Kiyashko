@@ -3,6 +3,11 @@
 
 layout(location = 0) out vec4 out_fragColor;
 
+layout(binding = 0, set = 0) uniform AppData
+{
+  UniformParams Params;
+};
+
 #if USE_GBUFFER
 
 layout(location = 0) in VS_OUT

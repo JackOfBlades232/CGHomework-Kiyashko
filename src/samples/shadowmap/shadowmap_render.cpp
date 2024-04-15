@@ -27,13 +27,6 @@ void SimpleShadowmapRender::AllocateResources()
                      | vk::ImageUsageFlagBits::eTransferDst
     },
     m_context);
-  mainViewDepth = m_context->createImage(etna::Image::CreateInfo
-  {
-    .extent     = vk::Extent3D{m_width, m_height, 1},
-    .name       = "main_view_depth",
-    .format     = vk::Format::eD32Sfloat,
-    .imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled
-  });
 
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
   constants = m_context->createBuffer(etna::Buffer::CreateInfo
@@ -78,7 +71,6 @@ void SimpleShadowmapRender::DeallocateResources()
   DeallocateDeferredResources();
 
   mainRt.reset();
-  mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   m_swapchain.Cleanup();
   vkDestroySurfaceKHR(GetVkInstance(), m_surface, nullptr);  
 
@@ -90,7 +82,6 @@ void SimpleShadowmapRender::DeallocateResources()
 
 void SimpleShadowmapRender::LoadShaders()
 {
-  LoadForwardShaders();
   LoadDeferredShaders();
   LoadShadowmapShaders();
   LoadTerrainShaders();
@@ -137,28 +128,18 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordShadowPassCommands(a_cmdBuff);
   RecordShadowmapProcessingCommands(a_cmdBuff);
 
-  // Deferred gpass
-  if (useDeferredRendering)
-    RecordGeomPassCommands(a_cmdBuff);
+  // Deferred
+  RecordGeomPassCommands(a_cmdBuff);
+  RecordResolvePassCommands(a_cmdBuff);
 
-  //// draw final scene to screen
-  //
-  if (useDeferredRendering)
-    RecordResolvePassCommands(a_cmdBuff);
-  else
-    RecordForwardPassCommands(a_cmdBuff);
-
-  //// Apply aniti-aliasing
-  //
+  // Anti-aliasing
   RecordAAResolveCommands(a_cmdBuff);
 
-  //// Add volfog
-  // @HUH(PKiyashko): because of volfog tex being smaller, we get aliasing here. Should it be moved to before AA?
+  // @TODO(PKiyashko): move depth-based screen space effects to before aa
+
   if (volfogEnabled)
     RecordVolfogCommands(a_cmdBuff, m_worldViewProj);
 
-  //// Blit to screen
-  //
   BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)

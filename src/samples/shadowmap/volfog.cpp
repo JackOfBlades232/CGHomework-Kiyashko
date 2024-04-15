@@ -50,7 +50,7 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
     vk::AccessFlags2(vk::AccessFlagBits2::eShaderWrite),
     vk::ImageLayout::eGeneral,
     vk::ImageAspectFlagBits::eColor);
-  etna::set_state(a_cmdBuff, GetCurrentResolvedDepthBuffer().get(), 
+  etna::set_state(a_cmdBuff, CurrentGbuffer().depth.get(), 
     vk::PipelineStageFlagBits2::eComputeShader,
     vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead),
     vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -62,7 +62,7 @@ void SimpleShadowmapRender::RecordVolfogCommands(VkCommandBuffer a_cmdBuff, cons
     { 
       etna::Binding{0, constants.genBinding()},
       etna::Binding{1, volfogMap.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
-      etna::Binding{2, GetCurrentResolvedDepthBuffer().genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{2, CurrentGbuffer().depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
     });
   VkDescriptorSet vkSet = set.getVkSet();
 

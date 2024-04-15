@@ -14,32 +14,6 @@ std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::Cu
   }
 }
 
-etna::RenderTargetState::AttachmentParams SimpleShadowmapRender::CurrentRTDepthAttachment()
-{
-  if (useDeferredRendering)
-    return {};
-  else
-  {
-    switch (currentAATechnique)
-    {
-    case eSsaa:
-      return {ssaaDepth.get(), ssaaDepth.getView({})};
-    default:
-      return {mainViewDepth.get(), mainViewDepth.getView({})};
-    }
-  }
-}
-
-etna::Image &SimpleShadowmapRender::GetCurrentResolvedDepthBuffer()
-{
-  if (useDeferredRendering)
-    return *(CurrentGbuffer()->depth);
-  else if (currentAATechnique == eSsaa)
-    return ssaaDepth;
-  else // MSAA resolves depth to mainViewDepth
-    return mainViewDepth;
-}
-
 vk::Rect2D SimpleShadowmapRender::CurrentRTRect()
 {
   switch (currentAATechnique)
@@ -49,11 +23,6 @@ vk::Rect2D SimpleShadowmapRender::CurrentRTRect()
   default:
     return vk::Rect2D{0, 0, m_width, m_height};
   }
-}
-
-const char *SimpleShadowmapRender::CurrentRTProgramName()
-{
-  return useDeferredRendering ? CurrentResolveProgramName() : CurrentForwardProgramName();
 }
 
 std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings()

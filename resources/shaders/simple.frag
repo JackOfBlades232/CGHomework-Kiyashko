@@ -6,11 +6,6 @@
 
 #include "main_shader.frag.inc"
 
-layout(binding = 0, set = 0) uniform AppData
-{
-    UniformParams Params;
-};
-
 void main()
 {
     UNPACK_PARAMETERS();

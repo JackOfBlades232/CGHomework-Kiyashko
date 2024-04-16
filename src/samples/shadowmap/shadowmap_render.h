@@ -244,6 +244,8 @@ private:
   float4 ambientLightInt     = float4(0.4f, 0.4f, 0.4f, 1.f);
   float ligthSourceCoeff     = 0.2f;
 
+  bool useSsao = true;
+
   bool settingsAreDirty = true;
 
   struct InputControlMouseEtc

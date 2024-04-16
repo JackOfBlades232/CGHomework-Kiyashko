@@ -145,9 +145,13 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordGeomPassCommands(a_cmdBuff);
 
   // Stuff that relies on the gbuffer
-  if (volfogEnabled) RecordVolfogGenerationCommands(a_cmdBuff, m_worldViewProj);
-  RecordSSAOGenerationCommands(a_cmdBuff);
-  RecordSSAOBlurCommands(a_cmdBuff);
+  if (volfogEnabled) 
+    RecordVolfogGenerationCommands(a_cmdBuff, m_worldViewProj);
+  if (useSsao)
+  {
+    RecordSSAOGenerationCommands(a_cmdBuff);
+    RecordSSAOBlurCommands(a_cmdBuff);
+  }
 
   RecordResolvePassCommands(a_cmdBuff);
 
@@ -155,7 +159,8 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordAAResolveCommands(a_cmdBuff);
 
   // Postfx stuff that relies on the main rt
-  if (volfogEnabled) RecordVolfogApplyCommands(a_cmdBuff);
+  if (volfogEnabled) 
+    RecordVolfogApplyCommands(a_cmdBuff);
 
   // Blit the rt to framebuffer
   BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);

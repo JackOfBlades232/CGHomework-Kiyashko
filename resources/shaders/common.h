@@ -78,6 +78,7 @@ struct UniformParams
   shader_vec4  ambientLightIntensity;
   shader_float reprojectionCoeff;
   shader_float lightSourcesIntensityCoeff;
+  shader_bool  useSsao;
 };
 
 struct SSAOUniformParams

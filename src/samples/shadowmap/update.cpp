@@ -53,6 +53,7 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.windVel                    = windVelocity;
   m_uniforms.ambientLightIntensity      = ambientLightInt;
   m_uniforms.lightSourcesIntensityCoeff = ligthSourceCoeff;
+  m_uniforms.useSsao                    = useSsao;
   ++m_uniforms.frameCounter;
 
 

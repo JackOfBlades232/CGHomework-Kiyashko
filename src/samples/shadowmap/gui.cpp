@@ -22,6 +22,7 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::SliderFloat2("Min/max terrain height", terrainMinMaxHeight.M, -10.f, 10.f);
     if (terrainMinMaxHeight.x > terrainMinMaxHeight.y)
       terrainMinMaxHeight.x = terrainMinMaxHeight.y;
+    ImGui::Checkbox("Enable SSAO", &useSsao);
     ImGui::Checkbox("Enable fog", &volfogEnabled);
 
     ShadowmapChoiceGUI();

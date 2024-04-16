@@ -6,7 +6,11 @@
 #include "../../render/quad_renderer.h"
 #include "../../render/postfx_renderer.h"
 #include "../../../resources/shaders/common.h"
+
 #include "etna/GraphicsPipeline.hpp"
+#include <etna/GlobalContext.hpp>
+#include <etna/Sampler.hpp>
+#include <etna/RenderTargetStates.hpp>
 #include <geom/vk_mesh.h>
 #include <vk_descriptor_sets.h>
 #include <vk_fbuf_attachment.h>
@@ -16,20 +20,16 @@
 #include <string>
 #include <iostream>
 
-#include <etna/GlobalContext.hpp>
-#include <etna/Sampler.hpp>
-#include <etna/RenderTargetStates.hpp>
-
 
 /* @FEATURE(PKiyashko): subpar features that could be better
-* Shaders: organize includes and reuse, remove remnants of pure-forward approach.
-* Code: untwist the architecture, should be more modular. Might as well demolish the renderer structure completely.
-* Deferred: add light volumes and more light sources.
-* AA: MSAA w/ deferred, fix TAA, add motion vectors.
-* Shadows: add ESM for the sake of it.
-* Volfog: fix the distance properties, add sdf clouds, optimize
-* SSAO: optimize, add temporal repro.
-*/
+ * Shaders: organize includes and reuse, remove remnants of pure-forward approach.
+ * Code: untwist the architecture, should be more modular. Might as well demolish the renderer structure completely.
+ * Deferred: add light volumes and more light sources.
+ * AA: MSAA w/ deferred, fix TAA, add motion vectors.
+ * Shadows: add ESM for the sake of it.
+ * Volfog: fix the distance properties, add sdf clouds, optimize
+ * SSAO: optimize, add temporal repro.
+ */
 
 class IRenderGUI;
 

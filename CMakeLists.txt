@@ -54,14 +54,9 @@ include_directories(${CMAKE_SOURCE_DIR}/external/imgui)
 include_directories(${CMAKE_SOURCE_DIR}/external/vkutils)
 include_directories(${CMAKE_SOURCE_DIR}/external)
 include_directories(${CMAKE_SOURCE_DIR}/src)
-#include_directories(${CMAKE_SOURCE_DIR}/external/volk)
 ##############################################
 
 add_compile_definitions(USE_ETNA VK_GRAPHICS_BASIC_ROOT="${PROJECT_SOURCE_DIR}")
 
 add_subdirectory(external/etna)
-#add_subdirectory(external/volk)
-#add_subdirectory(src/samples/quad2d)
 add_subdirectory(src/samples/shadowmap)
-#add_subdirectory(src/samples/simpleforward)
-add_subdirectory(src/samples/simple_compute)

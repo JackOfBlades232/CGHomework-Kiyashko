@@ -12,7 +12,7 @@ void SimpleShadowmapRender::AllocateAAResources()
     {
       .extent     = vk::Extent3D{m_width*2, m_height*2, 1},
       .name       = "ssaa_rt",
-      .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .format     = vk::Format::eR16G16B16A16Sfloat,
       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc
     });
 
@@ -21,14 +21,14 @@ void SimpleShadowmapRender::AllocateAAResources()
   {
     .extent     = taaRtExtent,
     .name       = "taa_rt",
-    .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+    .format     = vk::Format::eR16G16B16A16Sfloat,
     .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
   });
   taaFrames[1] = m_context->createImage(etna::Image::CreateInfo
   {
     .extent     = taaRtExtent,
     .name       = "taa_prev_rt",
-    .format     = static_cast<vk::Format>(m_swapchain.GetFormat()),
+    .format     = vk::Format::eR16G16B16A16Sfloat,
     .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
   });
 }
@@ -50,7 +50,7 @@ void SimpleShadowmapRender::SetupAAPipelines()
   m_pTaaReprojector = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
       .programName    = "taa_simple_reprojection",
       .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/taa_simple.frag.spv",
-      .format         = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .format         = vk::Format::eR16G16B16A16Sfloat,
       .extent         = vk::Extent2D{m_width, m_height}
     });
 }

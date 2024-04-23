@@ -35,7 +35,7 @@ SimpleShadowmapRender::RenderTarget::RenderTarget(vk::Extent2D extent, vk::Forma
 
 void SimpleShadowmapRender::AllocateResources()
 {
-  mainRt = RenderTarget(vk::Extent2D{m_width, m_height}, static_cast<vk::Format>(m_swapchain.GetFormat()), m_context, "main_view");
+  mainRt = RenderTarget(vk::Extent2D{m_width, m_height}, vk::Format::eR16G16B16A16Sfloat, m_context, "main_view");
 
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
   constants = m_context->createBuffer(etna::Buffer::CreateInfo

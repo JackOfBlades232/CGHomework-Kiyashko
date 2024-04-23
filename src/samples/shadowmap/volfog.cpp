@@ -35,7 +35,7 @@ void SimpleShadowmapRender::SetupVolfogPipelines()
   m_pVolfogApplier = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
       .programName   = "apply_volfog",
       .programExists = true,
-      .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .format        = vk::Format::eR16G16B16A16Sfloat,
       .extent        = vk::Extent2D{m_width, m_height}
     });
 }

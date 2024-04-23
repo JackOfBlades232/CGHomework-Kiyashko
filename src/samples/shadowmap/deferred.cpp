@@ -122,7 +122,7 @@ void SimpleShadowmapRender::RebuildCurrentDeferredPipelines()
   m_pGbufferResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
       .programName   = CurrentResolveProgramName(),
       .programExists = true,
-      .format        = static_cast<vk::Format>(m_swapchain.GetFormat()),
+      .format        = vk::Format::eR16G16B16A16Sfloat,
       .extent        = CurrentRTRect().extent
     });
 

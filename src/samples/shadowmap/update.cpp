@@ -53,7 +53,9 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.ambientLightColor          = ambientLightColor;
   m_uniforms.ambientIntensityCoeff      = ambientIntensity;
   m_uniforms.lightSourcesIntensityCoeff = lightIntensity;
+  m_uniforms.tonemappingTechnique       = (shader_uint)currentTonemappingTechnique;
   m_uniforms.useSsao                    = useSsao;
+  m_uniforms.exposureCoeff              = exposureCoeff;
   m_uniforms.reprojectionCoeff          = CurrentTaaReprojectionCoeff();
   ++m_uniforms.frameCounter;
 

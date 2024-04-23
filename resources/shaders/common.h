@@ -18,6 +18,10 @@
 #define SSAO_WINDOW_HALFSIZE 2
 #define SSAO_WORK_GROUP_DIM 16
 
+#define NONE_TONE     0
+#define REINHARD_TONE 1
+#define EXPOSURE_TONE 2
+
 #ifdef __cplusplus
 
 #include <LiteMath.h>
@@ -79,6 +83,8 @@ struct UniformParams
   shader_float ambientIntensityCoeff;
   shader_float lightSourcesIntensityCoeff;
   shader_float reprojectionCoeff;
+  shader_float exposureCoeff;
+  shader_uint  tonemappingTechnique;
   shader_bool  useSsao;
 };
 

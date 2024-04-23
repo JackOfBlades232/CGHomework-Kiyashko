@@ -105,7 +105,7 @@ void SimpleShadowmapRender::SetupShadowmapPipelines()
 
 void SimpleShadowmapRender::RecordShadowPassCommands(VkCommandBuffer a_cmdBuff)
 {
-  if (currentShadowmapTechnique == eShTechNone) 
+  if (currentShadowmapTechnique == eShadowmapNone) 
     return;
 
   etna::GraphicsPipeline *shadowmapPipeline = nullptr;

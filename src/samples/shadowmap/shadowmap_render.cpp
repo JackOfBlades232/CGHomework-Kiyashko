@@ -115,6 +115,7 @@ void SimpleShadowmapRender::PreparePipelines()
   SetupSSAOPipelines();
   SetupTerrainPipelines();
   SetupVolfogPipelines();
+  SetupTonemappingPipelines();
 }
 
 
@@ -162,8 +163,8 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   if (volfogEnabled) 
     RecordVolfogApplyCommands(a_cmdBuff);
 
-  // Blit the rt to framebuffer
-  BlitMainRTToScreen(a_cmdBuff, a_targetImage, a_targetImageView);
+  // Output to render target through tonemapping from HDR to LDR
+  RecordTonemappingCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
     m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, CurrentGbuffer().ao, defaultSampler);

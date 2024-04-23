@@ -192,6 +192,9 @@ private:
 
   // Anti-aliasing
   std::unique_ptr<PostfxRenderer> m_pTaaReprojector;
+
+  // Tonemapping
+  std::unique_ptr<PostfxRenderer> m_pToneMapper {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -213,7 +216,7 @@ private:
   
   enum ShadowmapTechnique
   {
-    eShTechNone = 0,
+    eShadowmapNone = 0,
     eSimple,
     eVsm,
     ePcf,
@@ -227,23 +230,32 @@ private:
   // @TODO(PKiyashko): Add back msaa with proper depth resolve for postfx and masks for deferred
   enum AATechnique
   {
-    eAATechNone = 0,
+    eAANone = 0,
     eSsaa,
     eTaa,
 
     eAATechMax
   };
 
-  ShadowmapTechnique currentShadowmapTechnique = eShTechNone;//eVsm;
-  AATechnique currentAATechnique               = eAATechNone;//eSsaa;
-  bool volfogEnabled                           = false;//true;
+  enum TonemappingTechnique
+  {
+    eTonemappingNone = NONE_TONE,
+    eReinhard        = REINHARD_TONE,
+    eExposure        = EXPOSURE_TONE
+  };
+
+  ShadowmapTechnique currentShadowmapTechnique     = eVsm;
+  AATechnique currentAATechnique                   = eSsaa;
+  TonemappingTechnique currentTonemappingTechnique = eReinhard;
+  bool volfogEnabled                               = false;//true;
 
   bool needToRegenerateHmap  = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
   float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
   float4 ambientLightColor   = float4(0.4f, 0.4f, 0.4f, 1.f);
-  float lightIntensity       = 0.2f;
-  float ambientIntensity     = 1.0f;
+  float lightIntensity       = 7.5f;
+  float ambientIntensity     = 0.35f;
+  float exposureCoeff        = 0.25f;
 
   bool useSsao = true;
 
@@ -299,6 +311,7 @@ private:
   void DoImGUI();
   void ShadowmapChoiceGUI();
   void AAChoiceGui();
+  void TonemappingChoiceGui();
 
   // Common
   std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments();
@@ -309,8 +322,6 @@ private:
     VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView,
     etna::Image &rt, vk::Extent2D extent, VkFilter filter, 
     vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor);
-  void BlitMainRTToScreen(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView) 
-    { BlitToTarget(a_cmdBuff, a_targetImage, a_targetImageView, mainRt.current(), vk::Extent2D{ m_width, m_height }, VK_FILTER_NEAREST); }
 
   // Deferred shading
   void AllocateDeferredResources();
@@ -365,6 +376,11 @@ private:
   void ReallocateVolfogResources() { AllocateVolfogResources(); }
   void RecordVolfogGenerationCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
   void RecordVolfogApplyCommands(VkCommandBuffer a_cmdBuff);
+
+  // Tonemapping
+  void SetupTonemappingPipelines();
+  void RecordTonemappingCommands(
+      VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 };
 
 

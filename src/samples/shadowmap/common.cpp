@@ -29,7 +29,7 @@ std::vector<std::vector<etna::Binding>> SimpleShadowmapRender::CurrentRTBindings
 {
   switch (currentShadowmapTechnique)
   {
-  case eShTechNone:
+  case eShadowmapNone:
     return {{ etna::Binding{0, constants.genBinding()} }};
     break;
 

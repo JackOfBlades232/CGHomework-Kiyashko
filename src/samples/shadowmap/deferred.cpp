@@ -141,7 +141,7 @@ const char *SimpleShadowmapRender::CurrentResolveProgramName()
 {
   switch (currentShadowmapTechnique)
   {
-  case eShTechNone:
+  case eShadowmapNone:
     return "simple_resolve";
     break;
   case eSimple:

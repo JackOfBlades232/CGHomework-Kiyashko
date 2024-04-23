@@ -16,7 +16,7 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::ColorEdit3("Ambient light color", ambientLightColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
 
     ImGui::SliderFloat("Light source intensity coeff", &lightIntensity, 0.f, 50.f);
-    ImGui::SliderFloat("Ambient light intensity coeff", &ambientIntensity, 0.f, 50.f);
+    ImGui::SliderFloat("Ambient light intensity coeff", &ambientIntensity, 0.f, 10.f);
 
     ImGui::NewLine();
 
@@ -29,6 +29,7 @@ void SimpleShadowmapRender::DoImGUI()
 
     ShadowmapChoiceGUI();
     AAChoiceGui();
+    TonemappingChoiceGui();
 
     ImGui::NewLine();
 
@@ -124,5 +125,46 @@ void SimpleShadowmapRender::AAChoiceGui()
   if (currentAATechnique == eTaa)
   {
     ImGui::SliderFloat("TAA reprojection coeff", &currentReprojectionCoeff, 0.0f, 1.0f);
+  }
+}
+
+void SimpleShadowmapRender::TonemappingChoiceGui()
+{
+  const char* items[] = { "None", "Reinhard", "Exposure" };
+  const char* currentItem = items[currentTonemappingTechnique];
+
+  ImGuiStyle& style = ImGui::GetStyle();
+  float w = ImGui::CalcItemWidth();
+  float buttonSize = ImGui::GetFrameHeight();
+  float spacing = style.ItemInnerSpacing.x;
+
+  ImGui::PushItemWidth(w - 2.0f * spacing - 2.0f * buttonSize);
+  if (ImGui::BeginCombo("##Tonemapping technique", currentItem, ImGuiComboFlags_NoArrowButton))
+  {
+    for (int i = 0; i < IM_ARRAYSIZE(items); i++)
+    {
+      bool selected = (currentItem == items[i]);
+      if (ImGui::Selectable(items[i], selected))
+      {
+        currentItem = items[i];
+        if (currentTonemappingTechnique != i)
+          settingsAreDirty = true;
+        currentTonemappingTechnique = (TonemappingTechnique)i;
+      }
+      if (selected)
+      {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::PopItemWidth();
+
+  ImGui::SameLine(0, style.ItemInnerSpacing.x);
+  ImGui::Text("Tonemapping technique");
+
+  if (currentTonemappingTechnique == eExposure)
+  {
+    ImGui::SliderFloat("Exposure coeff", &exposureCoeff, 0.0f, 15.0f);
   }
 }

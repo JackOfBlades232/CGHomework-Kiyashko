@@ -13,10 +13,12 @@ void SimpleShadowmapRender::DoImGUI()
 
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
     ImGui::SameLine();
-    ImGui::ColorEdit3("Ambient light color", ambientLightInt.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
+    ImGui::ColorEdit3("Ambient light color", ambientLightColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
 
-    ImGui::SliderFloat("Light source int coeff", &ligthSourceCoeff, 0.f, 1.f);
+    ImGui::SliderFloat("Light source intensity coeff", &lightIntensity, 0.f, 1.f);
+    ImGui::SliderFloat("Ambient light intensity coeff", &ambientIntensity, 0.f, 1.f);
 
+    ImGui::NewLine();
 
     ImGui::SliderFloat3("Light source position", m_light.cam.pos.M, -10.f, 10.f);
     ImGui::SliderFloat2("Min/max terrain height", terrainMinMaxHeight.M, -10.f, 10.f);

@@ -241,8 +241,9 @@ private:
   bool needToRegenerateHmap  = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
   float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
-  float4 ambientLightInt     = float4(0.4f, 0.4f, 0.4f, 1.f);
-  float ligthSourceCoeff     = 0.2f;
+  float4 ambientLightColor   = float4(0.4f, 0.4f, 0.4f, 1.f);
+  float lightIntensity       = 0.2f;
+  float ambientIntensity     = 1.0f;
 
   bool useSsao = true;
 

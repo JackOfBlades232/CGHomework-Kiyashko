@@ -75,9 +75,10 @@ struct UniformParams
   shader_mat4  prevProjViewMatrix;
   shader_vec3  windVel;
   shader_uint  frameCounter;
-  shader_vec4  ambientLightIntensity;
-  shader_float reprojectionCoeff;
+  shader_vec4  ambientLightColor;
+  shader_float ambientIntensityCoeff;
   shader_float lightSourcesIntensityCoeff;
+  shader_float reprojectionCoeff;
   shader_bool  useSsao;
 };
 

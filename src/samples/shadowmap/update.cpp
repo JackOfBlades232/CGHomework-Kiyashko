@@ -49,11 +49,12 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.lightPos                   = m_light.cam.pos;
   m_uniforms.time                       = a_time;
   m_uniforms.prevProjViewMatrix         = m_prevProjViewMatrix;
-  m_uniforms.reprojectionCoeff          = CurrentTaaReprojectionCoeff();
   m_uniforms.windVel                    = windVelocity;
-  m_uniforms.ambientLightIntensity      = ambientLightInt;
-  m_uniforms.lightSourcesIntensityCoeff = ligthSourceCoeff;
+  m_uniforms.ambientLightColor          = ambientLightColor;
+  m_uniforms.ambientIntensityCoeff      = ambientIntensity;
+  m_uniforms.lightSourcesIntensityCoeff = lightIntensity;
   m_uniforms.useSsao                    = useSsao;
+  m_uniforms.reprojectionCoeff          = CurrentTaaReprojectionCoeff();
   ++m_uniforms.frameCounter;
 
 

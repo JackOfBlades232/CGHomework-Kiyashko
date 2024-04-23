@@ -31,7 +31,7 @@ layout(set = 1, binding = 2) uniform sampler2D gAo;
   const vec4 _pos_hom = inverse(Params.projViewMatrix) * vec4((2.0*_texCoord)-1.0, _depth, 1.0); \
   const vec3 pos = (_pos_hom / _pos_hom.w).xyz;                                                  \
   const vec4 ambient =                                                                           \
-    Params.ambientLightIntensity * (Params.useSsao ? textureLod(gAo, _texCoord, 0).x : 1.0)
+    Params.ambientLightColor * (Params.useSsao ? textureLod(gAo, _texCoord, 0).x : 1.0)
 
 #else
 

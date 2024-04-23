@@ -15,8 +15,8 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::SameLine();
     ImGui::ColorEdit3("Ambient light color", ambientLightColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
 
-    ImGui::SliderFloat("Light source intensity coeff", &lightIntensity, 0.f, 1.f);
-    ImGui::SliderFloat("Ambient light intensity coeff", &ambientIntensity, 0.f, 1.f);
+    ImGui::SliderFloat("Light source intensity coeff", &lightIntensity, 0.f, 50.f);
+    ImGui::SliderFloat("Ambient light intensity coeff", &ambientIntensity, 0.f, 50.f);
 
     ImGui::NewLine();
 

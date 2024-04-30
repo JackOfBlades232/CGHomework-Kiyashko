@@ -23,6 +23,7 @@ set(RENDER_SOURCE
         shadowmap.cpp
         aa.cpp
         ssao.cpp
+        rsm.cpp
         terrain.cpp
         volfog.cpp
         tonemapping.cpp

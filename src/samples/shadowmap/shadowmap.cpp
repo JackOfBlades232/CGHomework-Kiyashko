@@ -1,4 +1,7 @@
 #include "shadowmap_render.h"
+#include <memory>
+#include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_structs.hpp>
 
 
 /// RESOURCE ALLOCATION
@@ -110,20 +113,26 @@ void SimpleShadowmapRender::RecordShadowPassCommands(VkCommandBuffer a_cmdBuff)
 
   etna::GraphicsPipeline *shadowmapPipeline = nullptr;
   std::vector<etna::RenderTargetState::AttachmentParams> colorAttachments{};
+  etna::RenderTargetState::AttachmentParams depthAttachment{};
+  vk::Rect2D rect{};
   switch (currentShadowmapTechnique)
   {
   case eSimple:
   case ePcf:
     shadowmapPipeline = &m_simpleShadowPipeline;
+    depthAttachment = {.image = shadowMap.get(), .view = shadowMap.getView({})};
+    rect = {0, 0, 2048, 2048};
     break;
   case eVsm:
     shadowmapPipeline = &m_vsmShadowPipeline;
     colorAttachments  = {{.image = vsmMomentMap.get(), .view = vsmMomentMap.getView({})}};
+    depthAttachment = {.image = shadowMap.get(), .view = shadowMap.getView({})};
+    rect = {0, 0, 2048, 2048};
+  default:
     break;
   }
 
-  etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, 2048, 2048},
-    colorAttachments, {.image = shadowMap.get(), .view = shadowMap.getView({})});
+  etna::RenderTargetState renderTargets(a_cmdBuff, rect, colorAttachments, depthAttachment);
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowmapPipeline->getVkPipeline());
   RecordDrawSceneCommands(a_cmdBuff, m_lightMatrix, shadowmapPipeline->getVkPipelineLayout());

@@ -31,5 +31,5 @@ void main()
     vec4 lightColor  = color_lights * Params.lightSourcesIntensityCoeff;
     vec4 ambientColor = ambient * Params.ambientIntensityCoeff;
 
-    out_fragColor = (lightColor + ambientColor) * vec4(Params.baseColor, 1.0f);
+    out_fragColor = (lightColor + ambientColor + indirectLightCol) * vec4(Params.baseColor, 1.0f);
 }

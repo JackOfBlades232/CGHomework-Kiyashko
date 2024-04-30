@@ -26,6 +26,8 @@ if __name__ == '__main__':
         "vsm_shadow.frag", 
         "pcf_shadow.frag", 
         "tonemapping.frag", 
+        "rsm_shadowmap.frag", 
+        "rsm_resolve.frag", 
     ]
 
     for shader in shader_list:

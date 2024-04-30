@@ -14,7 +14,7 @@ std::vector<etna::RenderTargetState::AttachmentParams> SimpleShadowmapRender::Cu
   }
 }
 
-vk::Rect2D SimpleShadowmapRender::CurrentRTRect()
+vk::Rect2D SimpleShadowmapRender::CurrentRTRect() const
 {
   switch (currentAATechnique)
   {

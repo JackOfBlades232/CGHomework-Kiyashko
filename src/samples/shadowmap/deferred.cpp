@@ -194,7 +194,8 @@ void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff)
     { 
       etna::Binding{0, gbuf.depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
       etna::Binding{1, gbuf.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}, 
-      etna::Binding{2, gbuf.blurredAo.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}, 
+      etna::Binding{2, gbuf.blurredAo.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{3, rsmLowresFrame.genBinding(filteringSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
     });
 
   // @TODO(PKiyashko): add ability to pass multiple attachments to postfx rederer? This basically

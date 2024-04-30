@@ -19,6 +19,7 @@
 
 #include <string>
 #include <iostream>
+#include <vulkan/vulkan_structs.hpp>
 
 
 /* @FEATURE(PKiyashko): subpar features that could be better
@@ -106,6 +107,7 @@ private:
   etna::GlobalContext* m_context;
 
   etna::Sampler defaultSampler;
+  etna::Sampler filteringSampler;
   etna::Buffer constants;
 
   RenderTarget mainRt;
@@ -115,6 +117,9 @@ private:
   etna::Image shadowMap;
   etna::Image vsmMomentMap;
   etna::Image vsmSmoothMomentMap;
+  etna::Image rsmPositions, rsmNormals, rsmDepth, rsmFlux;
+  etna::Image rsmLowresFrame;
+  etna::Buffer rsmSamplesDistribution;
 
   // Anti-aliasing
   // @TODO(PKiyashko): this is a lot of excess resources. Maybe recreate instead?
@@ -165,6 +170,9 @@ private:
   // For ssao
   SSAOUniformParams ssaoUniforms {};
 
+  // For rsm
+  LiteMath::float4 rsmSampleParams[RSM_DISTIBUTION_SIZE];
+
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
 
@@ -176,6 +184,8 @@ private:
   etna::GraphicsPipeline m_simpleShadowPipeline {};
   etna::GraphicsPipeline m_vsmShadowPipeline    {};
   etna::ComputePipeline  m_vsmFilteringPipeline {};
+  etna::GraphicsPipeline m_rsmShadowPipeline    {};
+  std::unique_ptr<PostfxRenderer> m_pLowresRsmResolver;
 
   // Terrain
   etna::GraphicsPipeline m_terrainGpassPipeline;
@@ -245,19 +255,20 @@ private:
   };
 
   ShadowmapTechnique currentShadowmapTechnique     = eVsm;
-  AATechnique currentAATechnique                   = eSsaa;
-  TonemappingTechnique currentTonemappingTechnique = eReinhard;
-  bool volfogEnabled                               = false;//true;
+  AATechnique currentAATechnique                   = eAANone;
+  TonemappingTechnique currentTonemappingTechnique = eTonemappingNone;
+  bool volfogEnabled                               = false;
+
+  bool useSsao = false;
+  bool useRsm = true;
 
   bool needToRegenerateHmap  = true;
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
   float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
   float4 ambientLightColor   = float4(0.4f, 0.4f, 0.4f, 1.f);
-  float lightIntensity       = 7.5f;
-  float ambientIntensity     = 0.35f;
-  float exposureCoeff        = 0.25f;
-
-  bool useSsao = true;
+  float lightIntensity       = 1.f;
+  float ambientIntensity     = 0.25f;
+  float exposureCoeff        = 1.f;
 
   bool settingsAreDirty = true;
 
@@ -315,7 +326,7 @@ private:
 
   // Common
   std::vector<etna::RenderTargetState::AttachmentParams> CurrentRTAttachments();
-  vk::Rect2D CurrentRTRect();
+  vk::Rect2D CurrentRTRect() const;
   std::vector<std::vector<etna::Binding>> CurrentRTBindings();
   void RecordDrawSceneCommands(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
   void BlitToTarget(
@@ -341,6 +352,16 @@ private:
   void SetupShadowmapPipelines();
   void RecordShadowPassCommands(VkCommandBuffer a_cmdBuff);
   void RecordShadowmapProcessingCommands(VkCommandBuffer a_cmdBuff);
+
+  // Rsm
+  void AllocateRsmResources();
+  void DeallocateRsmResources();
+  void LoadRsmShaders();
+  void SetupRsmPipelines();
+  void RecordRsmShadowPassCommands(VkCommandBuffer a_cmdBuff);
+  void RecordRsmIndirectLightingCommands(VkCommandBuffer a_cmdBuff);
+  vk::Rect2D GetLowresRsmRect() const 
+    { return vk::Rect2D{0, 0, CurrentRTRect().extent.width, CurrentRTRect().extent.height}; } // for tests
 
   // AA techniques
   void AllocateAAResources();

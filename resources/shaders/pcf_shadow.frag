@@ -38,11 +38,10 @@ void main()
   const vec4 chartreuse  = vec4(0.5f, 1.0f, 0.0f, 1.0f);
 
   vec4 lightColor1 = mix(dark_violet, chartreuse, abs(sin(Params.time)));
-  vec4 lightColor2 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
   vec3 lightDir    = normalize(Params.lightPos - pos);
 
   vec4 lightColor  = max(dot(norm, lightDir), 0.0f) * lightColor1 * Params.lightSourcesIntensityCoeff;
   vec4 ambientColor = ambient * Params.ambientIntensityCoeff;
 
-  out_fragColor = (lightColor*shadow + ambientColor) * vec4(Params.baseColor, 1.0f);
+  out_fragColor = (lightColor*shadow + ambientColor + indirectLightCol) * vec4(Params.baseColor, 1.0f);
 }

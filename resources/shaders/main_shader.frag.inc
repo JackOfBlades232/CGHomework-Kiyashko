@@ -18,6 +18,7 @@ layout(location = 0) in VS_OUT
 layout(set = 1, binding = 0) uniform sampler2D gDepth;
 layout(set = 1, binding = 1) uniform sampler2D gNormal;
 layout(set = 1, binding = 2) uniform sampler2D gAo;
+layout(set = 1, binding = 3) uniform sampler2D rsmMap;
 
 #define UNPACK_PARAMETERS()                                                                      \
   const vec2 _texCoord = vec2(surf.texCoord.x, 1.0 - surf.texCoord.y);                           \
@@ -31,7 +32,8 @@ layout(set = 1, binding = 2) uniform sampler2D gAo;
   const vec4 _pos_hom = inverse(Params.projViewMatrix) * vec4((2.0*_texCoord)-1.0, _depth, 1.0); \
   const vec3 pos = (_pos_hom / _pos_hom.w).xyz;                                                  \
   const vec4 ambient =                                                                           \
-    Params.ambientLightColor * (Params.useSsao ? textureLod(gAo, _texCoord, 0).x : 1.0)
+    Params.ambientLightColor * (Params.useSsao ? textureLod(gAo, _texCoord, 0).x : 1.0);         \
+  const vec4 indirectLightCol = Params.useRsm ? vec4(textureLod(rsmMap, surf.texCoord, 0).xyz, 1.0) : vec4(0.0, 0.0, 0.0, 1.0)
 
 #else
 
@@ -43,10 +45,11 @@ layout(location = 0) in VS_OUT
   vec2 texCoord;
 } surf;
 
-#define UNPACK_PARAMETERS()     \
-  const vec3 pos  = surf.wPos;  \
-  const vec3 norm = surf.wNorm; \
-  const vec4 ambient = Params.ambientLightIntensity
+#define UNPACK_PARAMETERS()                         \
+  const vec3 pos  = surf.wPos;                      \
+  const vec3 norm = surf.wNorm;                     \
+  const vec4 ambient = Params.ambientLightIntensity \
+  const vec4 indirectLightCol = vec4(0.0)
 
 #endif
 

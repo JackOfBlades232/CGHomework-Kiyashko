@@ -1,3 +1,4 @@
+#include "etna/DescriptorSet.hpp"
 #include "shadowmap_render.h"
 #include <cstdlib>
 

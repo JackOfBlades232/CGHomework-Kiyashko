@@ -39,5 +39,5 @@ void main()
   vec4 lightColor  = max(dot(norm, lightDir), 0.0f) * lightColor1 * Params.lightSourcesIntensityCoeff;
   vec4 ambientColor = ambient * Params.ambientIntensityCoeff;
 
-  out_fragColor = (lightColor*shadow + ambientColor) * vec4(Params.baseColor, 1.0f);
+  out_fragColor = (lightColor*shadow + ambientColor + indirectLightCol) * vec4(Params.baseColor, 1.0f);
 }

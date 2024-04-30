@@ -1,5 +1,6 @@
 #include "shadowmap_render.h"
 #include "../../../resources/shaders/common.h"
+#include "etna/Sampler.hpp"
 
 #include <geom/vk_mesh.h>
 #include <vk_pipeline.h>
@@ -10,6 +11,7 @@
 #include <etna/Etna.hpp>
 #include <etna/RenderTargetStates.hpp>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_enums.hpp>
 
 /// RENDER TARGET
 
@@ -38,6 +40,7 @@ void SimpleShadowmapRender::AllocateResources()
   mainRt = RenderTarget(vk::Extent2D{m_width, m_height}, vk::Format::eR16G16B16A16Sfloat, m_context, "main_view");
 
   defaultSampler = etna::Sampler(etna::Sampler::CreateInfo{.name = "default_sampler"});
+  filteringSampler = etna::Sampler(etna::Sampler::CreateInfo{.filter = vk::Filter::eLinear, .name = "filtering_sampler"});
   constants = m_context->createBuffer(etna::Buffer::CreateInfo
   {
     .size = sizeof(UniformParams),
@@ -50,6 +53,7 @@ void SimpleShadowmapRender::AllocateResources()
 
   AllocateDeferredResources();
   AllocateShadowmapResources();
+  AllocateRsmResources();
   AllocateAAResources();
   AllocateSSAOResources();
   AllocateTerrainResources();
@@ -78,6 +82,7 @@ void SimpleShadowmapRender::DeallocateResources()
   DeallocateTerrainResources();
   DeallocateSSAOResources();
   DeallocateAAResources();
+  DeallocateRsmResources();
   DeallocateShadowmapResources();
   DeallocateDeferredResources();
 
@@ -95,6 +100,7 @@ void SimpleShadowmapRender::LoadShaders()
 {
   LoadDeferredShaders();
   LoadShadowmapShaders();
+  LoadRsmShaders();
   LoadSSAOShaders();
   LoadTerrainShaders();
   LoadVolfogShaders();
@@ -111,6 +117,7 @@ void SimpleShadowmapRender::PreparePipelines()
 
   SetupDeferredPipelines();
   SetupShadowmapPipelines();
+  SetupRsmPipelines();
   SetupAAPipelines();
   SetupSSAOPipelines();
   SetupTerrainPipelines();
@@ -140,6 +147,9 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
 
   // Shadowmap
   RecordShadowPassCommands(a_cmdBuff);
+  if (useRsm)
+    RecordRsmShadowPassCommands(a_cmdBuff);
+
   RecordShadowmapProcessingCommands(a_cmdBuff);
 
   // Deferred gpass
@@ -148,6 +158,8 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   // Stuff that relies on the gbuffer
   if (volfogEnabled) 
     RecordVolfogGenerationCommands(a_cmdBuff, m_worldViewProj);
+  if (useRsm)
+    RecordRsmIndirectLightingCommands(a_cmdBuff);
   if (useSsao)
   {
     RecordSSAOGenerationCommands(a_cmdBuff);
@@ -167,7 +179,7 @@ void SimpleShadowmapRender::BuildCommandBuffer(VkCommandBuffer a_cmdBuff, VkImag
   RecordTonemappingCommands(a_cmdBuff, a_targetImage, a_targetImageView);
 
   if (m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, CurrentGbuffer().ao, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, rsmLowresFrame, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,

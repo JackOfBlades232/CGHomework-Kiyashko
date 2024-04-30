@@ -9,6 +9,12 @@ void SimpleShadowmapRender::DoImGUI()
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   {
+    static bool inited = false;
+    if (!inited) {
+      m_light.cam.pos = LiteMath::float3(-1.8f, 1.4f, 3.5f);
+      inited = true;
+    }
+
     ImGui::Begin("Simple render settings");
 
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
@@ -24,6 +30,7 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::SliderFloat2("Min/max terrain height", terrainMinMaxHeight.M, -10.f, 10.f);
     if (terrainMinMaxHeight.x > terrainMinMaxHeight.y)
       terrainMinMaxHeight.x = terrainMinMaxHeight.y;
+    ImGui::Checkbox("Enable RSM", &useRsm);
     ImGui::Checkbox("Enable SSAO", &useSsao);
     ImGui::Checkbox("Enable fog", &volfogEnabled);
 

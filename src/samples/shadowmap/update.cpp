@@ -1,5 +1,6 @@
 #include "../../utils/input_definitions.h"
 
+#include "LiteMath.h"
 #include "etna/Etna.hpp"
 #include "shadowmap_render.h"
 
@@ -47,6 +48,7 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.projMatrix                 = m_proj;
   m_uniforms.lightMatrix                = m_lightMatrix;
   m_uniforms.lightPos                   = m_light.cam.pos;
+  m_uniforms.lightDir                   = m_light.cam.forward();
   m_uniforms.time                       = a_time;
   m_uniforms.prevProjViewMatrix         = m_prevProjViewMatrix;
   m_uniforms.windVel                    = windVelocity;
@@ -55,6 +57,7 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.lightSourcesIntensityCoeff = lightIntensity;
   m_uniforms.tonemappingTechnique       = (shader_uint)currentTonemappingTechnique;
   m_uniforms.useSsao                    = useSsao;
+  m_uniforms.useRsm                     = useRsm;
   m_uniforms.exposureCoeff              = exposureCoeff;
   m_uniforms.reprojectionCoeff          = CurrentTaaReprojectionCoeff();
   ++m_uniforms.frameCounter;

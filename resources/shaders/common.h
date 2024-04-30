@@ -22,6 +22,8 @@
 #define REINHARD_TONE 1
 #define EXPOSURE_TONE 2
 
+#define RSM_DISTIBUTION_SIZE 400
+
 #ifdef __cplusplus
 
 #include <LiteMath.h>
@@ -72,6 +74,8 @@ struct UniformParams
   shader_mat4  projViewMatrix;
   shader_mat4  projMatrix;
   shader_mat4  lightMatrix;
+  shader_vec3  lightDir;
+  shader_float pad__;
   shader_vec3  lightPos;
   shader_float time;
   shader_vec3  baseColor;
@@ -86,6 +90,8 @@ struct UniformParams
   shader_float exposureCoeff;
   shader_uint  tonemappingTechnique;
   shader_bool  useSsao;
+  shader_bool  useRsm;
+  shader_float pad1__;
 };
 
 struct SSAOUniformParams

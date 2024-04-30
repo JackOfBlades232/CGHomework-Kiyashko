@@ -132,6 +132,13 @@ void SimpleShadowmapRender::RebuildCurrentDeferredPipelines()
       .format        = vk::Format::eR32Sfloat,
       .extent        = CurrentRTRect().extent
     });
+
+  m_pLowresRsmResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
+      .programName = "rsm_lowres_resolve",
+      .programExists = true,
+      .format = vk::Format::eR32G32B32A32Sfloat,
+      .extent = vk::Extent2D{GetLowresRsmRect().extent.width, GetLowresRsmRect().extent.height}
+    });
 }
 
 
@@ -195,7 +202,7 @@ void SimpleShadowmapRender::RecordResolvePassCommands(VkCommandBuffer a_cmdBuff)
       etna::Binding{0, gbuf.depth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
       etna::Binding{1, gbuf.normals.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}, 
       etna::Binding{2, gbuf.blurredAo.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
-      etna::Binding{3, rsmLowresFrame.genBinding(filteringSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
+      etna::Binding{3, rsmLowresFrame.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
     });
 
   // @TODO(PKiyashko): add ability to pass multiple attachments to postfx rederer? This basically

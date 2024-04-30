@@ -22,7 +22,7 @@
 #define REINHARD_TONE 1
 #define EXPOSURE_TONE 2
 
-#define RSM_DISTIBUTION_SIZE 400
+#define RSM_DISTIBUTION_SIZE 800
 
 #ifdef __cplusplus
 

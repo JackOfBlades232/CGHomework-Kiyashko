@@ -48,7 +48,7 @@ void main()
   vec3 e = vec3(0.f);
   for (int i = 0; i < RSM_DISTIBUTION_SIZE; ++i)
   {
-    const vec2 sampleTexCoord = shadowTexCoord + samples[i].xy;
+    const vec2 sampleTexCoord = shadowTexCoord + samples[i].xy * 0.075;
     const vec3 samplePosition = textureLod(rsmPositions, sampleTexCoord, 0).xyz;
     const vec3 sampleNorm = textureLod(rsmNormals, sampleTexCoord, 0).xyz;
     const vec3 sampleFlux = textureLod(rsmFlux, sampleTexCoord, 0).xyz;

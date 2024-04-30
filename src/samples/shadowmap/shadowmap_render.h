@@ -107,7 +107,6 @@ private:
   etna::GlobalContext* m_context;
 
   etna::Sampler defaultSampler;
-  etna::Sampler filteringSampler;
   etna::Buffer constants;
 
   RenderTarget mainRt;
@@ -266,9 +265,10 @@ private:
   float2 terrainMinMaxHeight = float2(0.f, 3.f);
   float3 windVelocity        = float3(-0.5f, 0.f, -0.5f);
   float4 ambientLightColor   = float4(0.4f, 0.4f, 0.4f, 1.f);
-  float lightIntensity       = 1.f;
+  float lightIntensity       = 0.65f;
   float ambientIntensity     = 0.25f;
   float exposureCoeff        = 1.f;
+  float rsmResCoeff          = 1.f;
 
   bool settingsAreDirty = true;
 
@@ -321,6 +321,7 @@ private:
 
   void DoImGUI();
   void ShadowmapChoiceGUI();
+  void RsmChoiceGui();
   void AAChoiceGui();
   void TonemappingChoiceGui();
 
@@ -358,10 +359,10 @@ private:
   void DeallocateRsmResources();
   void LoadRsmShaders();
   void SetupRsmPipelines();
+  void ReallocateRsmResources() { AllocateRsmResources(); }
   void RecordRsmShadowPassCommands(VkCommandBuffer a_cmdBuff);
   void RecordRsmIndirectLightingCommands(VkCommandBuffer a_cmdBuff);
-  vk::Rect2D GetLowresRsmRect() const 
-    { return vk::Rect2D{0, 0, CurrentRTRect().extent.width, CurrentRTRect().extent.height}; } // for tests
+  vk::Rect2D GetLowresRsmRect() const;
 
   // AA techniques
   void AllocateAAResources();

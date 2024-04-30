@@ -3,6 +3,7 @@
 #extension GL_GOOGLE_include_directive : require
 
 #include "common.h"
+#include "face_color.frag.inc"
 
 layout(location = 0) out vec4 out_pos;
 layout(location = 1) out vec4 out_norm;
@@ -26,9 +27,8 @@ void main()
   out_pos = vec4(surf.wPos, 1.f);
   out_norm = vec4(surf.wNorm, 1.f);
 
-  const vec4 dark_violet = vec4(0.59f, 0.0f, 0.82f, 1.0f);
-  const vec4 chartreuse  = vec4(0.5f, 1.0f, 0.0f, 1.0f);
-  vec4 lightColor = mix(dark_violet, chartreuse, abs(sin(Params.time)));
+  vec4 lightColor = vec4(0.5f, 0.5f, 0.5f, 1.f);
+  vec4 meshCol = color_from_normal(surf.wNorm);
 
-  out_flux = Params.lightSourcesIntensityCoeff * lightColor;
+  out_flux = 3.f * Params.lightSourcesIntensityCoeff * lightColor * meshCol * vec4(Params.baseColor, 1.f);
 }

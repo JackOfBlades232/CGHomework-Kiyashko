@@ -5,31 +5,26 @@
 #include "common.h"
 
 #include "main_shader.frag.inc"
+#include "face_color.frag.inc"
 
 void main()
 {
-    UNPACK_PARAMETERS();
+  UNPACK_PARAMETERS();
 
-    vec3 lightDir1 = normalize(Params.lightPos - pos);
-    vec3 lightDir2 = vec3(0.0f, 0.0f, 1.0f);
+  vec3 lightDir1 = normalize(Params.lightPos - pos);
+  vec3 lightDir2 = vec3(0.0f, 0.0f, 1.0f);
 
-    const vec4 dark_violet = vec4(0.59f, 0.0f, 0.82f, 1.0f);
-    const vec4 chartreuse  = vec4(0.5f, 1.0f, 0.0f, 1.0f);
+  vec4 lightColor1 = vec4(0.5f, 0.5f, 0.5f, 1.f);
+  vec4 lightColor2 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    vec4 lightColor1 = mix(dark_violet, chartreuse, 0.5f);
-    if(Params.animateLightColor)
-        lightColor1 = mix(dark_violet, chartreuse, abs(sin(Params.time)));
+  vec3 N = norm; 
 
-    vec4 lightColor2 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+  vec4 color1 = max(dot(N, lightDir1), 0.0f) * lightColor1;
+  vec4 color2 = max(dot(N, lightDir2), 0.0f) * lightColor2;
+  vec4 color_lights = mix(color1, color2, 0.2f);
 
-    vec3 N = norm; 
+  vec4 lightColor  = color_lights * Params.lightSourcesIntensityCoeff;
+  vec4 ambientColor = ambient * Params.ambientIntensityCoeff;
 
-    vec4 color1 = max(dot(N, lightDir1), 0.0f) * lightColor1;
-    vec4 color2 = max(dot(N, lightDir2), 0.0f) * lightColor2;
-    vec4 color_lights = mix(color1, color2, 0.2f);
-
-    vec4 lightColor  = color_lights * Params.lightSourcesIntensityCoeff;
-    vec4 ambientColor = ambient * Params.ambientIntensityCoeff;
-
-    out_fragColor = (lightColor + ambientColor + indirectLightCol) * vec4(Params.baseColor, 1.0f);
+  out_fragColor = (lightColor + ambientColor) * vec4(Params.baseColor, 1.0f) * color_from_normal(norm) + indirectLightCol;
 }

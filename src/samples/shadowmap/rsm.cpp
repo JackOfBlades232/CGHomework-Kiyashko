@@ -3,6 +3,7 @@
 #include "shadowmap_render.h"
 
 #include <cmath>
+#include <cstdint>
 #include <random>
 #include <vulkan/vulkan_core.h>
 
@@ -55,9 +56,6 @@ void SimpleShadowmapRender::AllocateRsmResources()
     .name = "rsm_samples_dist"
   });
 
-  // @TODO(PKiyashko): pull out constants to either params, or somewhere visible
-  const float rMax = 0.05f;
-
   std::uniform_real_distribution<float> random(0.f, 1.f);
   std::default_random_engine engine;
   float weightSum = 0.f;
@@ -65,8 +63,8 @@ void SimpleShadowmapRender::AllocateRsmResources()
   {
     float angle    = 2.f * F_PI * random(engine);
     float radCoeff = random(engine);
-    float rad      = rMax * radCoeff;
-    float weight   = radCoeff;
+    float rad      = radCoeff;
+    float weight   = powf(radCoeff, 2.0f);
 
     rsmSampleParams[i].x = rad * sinf(angle);
     rsmSampleParams[i].y = rad * cosf(angle);
@@ -99,6 +97,11 @@ void SimpleShadowmapRender::LoadRsmShaders()
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/rsm_shadowmap.frag.spv", 
       VK_GRAPHICS_BASIC_ROOT"/resources/shaders/simple.vert.spv"
     });
+  etna::create_program("rsm_lowres_resolve",
+    {
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/rsm_resolve.frag.spv", 
+      VK_GRAPHICS_BASIC_ROOT"/resources/shaders/quad3_vert.vert.spv"
+    });
 }
 
 void SimpleShadowmapRender::SetupRsmPipelines()
@@ -128,13 +131,6 @@ void SimpleShadowmapRender::SetupRsmPipelines()
           .colorAttachmentFormats = {vk::Format::eR32G32B32A32Sfloat, vk::Format::eR32G32B32A32Sfloat, vk::Format::eR32G32B32A32Sfloat},
           .depthAttachmentFormat = vk::Format::eD16Unorm
         },
-    });
-
-  m_pLowresRsmResolver = std::make_unique<PostfxRenderer>(PostfxRenderer::CreateInfo{
-      .programName = "rsm_lowres_resolve",
-      .fragShaderPath = VK_GRAPHICS_BASIC_ROOT"/resources/shaders/rsm_resolve.frag.spv",
-      .format = vk::Format::eR32G32B32A32Sfloat,
-      .extent = vk::Extent2D{GetLowresRsmRect().extent.width, GetLowresRsmRect().extent.height}
     });
 }
 
@@ -170,5 +166,14 @@ void SimpleShadowmapRender::RecordRsmIndirectLightingCommands(VkCommandBuffer a_
       etna::Binding{4, rsmFlux.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)},
       etna::Binding{5, rsmSamplesDistribution.genBinding()},
     }});
+}
+
+vk::Rect2D SimpleShadowmapRender::GetLowresRsmRect() const 
+{
+  return vk::Rect2D{
+    0, 0, 
+    (uint32_t)(CurrentRTRect().extent.width * rsmResCoeff), 
+    (uint32_t)(CurrentRTRect().extent.height * rsmResCoeff)
+  };
 }
 

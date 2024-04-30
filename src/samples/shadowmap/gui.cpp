@@ -11,7 +11,7 @@ void SimpleShadowmapRender::DoImGUI()
   {
     static bool inited = false;
     if (!inited) {
-      m_light.cam.pos = LiteMath::float3(-1.8f, 1.4f, 3.5f);
+      m_light.cam.pos = LiteMath::float3(0.f, 1.2f, 4.75f);
       inited = true;
     }
 
@@ -35,6 +35,7 @@ void SimpleShadowmapRender::DoImGUI()
     ImGui::Checkbox("Enable fog", &volfogEnabled);
 
     ShadowmapChoiceGUI();
+    RsmChoiceGui();
     AAChoiceGui();
     TonemappingChoiceGui();
 
@@ -53,6 +54,7 @@ void SimpleShadowmapRender::DoImGUI()
 
     RebuildCurrentDeferredPipelines();
     ReallocateVolfogResources();
+    ReallocateRsmResources();
     resetReprojection = true;
   }
 
@@ -92,6 +94,44 @@ void SimpleShadowmapRender::ShadowmapChoiceGUI()
   ImGui::PopItemWidth();
   ImGui::SameLine(0, style.ItemInnerSpacing.x);
   ImGui::Text("Shadow technique");
+}
+
+void SimpleShadowmapRender::RsmChoiceGui()
+{
+  const char *items[3] = { "0.5x", "1x", "2x" };
+  static int curId = 0;
+  int prevId = curId;
+
+  ImGuiStyle &style = ImGui::GetStyle();
+
+  if (ImGui::BeginCombo("##rsm scale", items[curId], ImGuiComboFlags_NoArrowButton))
+  {
+    for (int i = 0; i < 3; i++)
+    {
+      bool selected = (curId == i);
+      if (ImGui::Selectable(items[i], selected))
+      {
+        curId = i;
+        if (prevId != i)
+          settingsAreDirty = true;
+      }
+      if (selected)
+      {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+
+  ImGui::SameLine(0, style.ItemInnerSpacing.x);
+  ImGui::Text("Rsm map scale");
+
+  if (curId == 0)
+    rsmResCoeff = 0.5f;
+  else if (curId == 1)
+    rsmResCoeff = 1.0f;
+  else
+    rsmResCoeff = 2.0f;
 }
 
 void SimpleShadowmapRender::AAChoiceGui()

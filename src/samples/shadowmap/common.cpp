@@ -1,4 +1,5 @@
 #include "shadowmap_render.h"
+#include <cstring>
 
 /// TECHNIQUE CHOICE & BUILDERS
 

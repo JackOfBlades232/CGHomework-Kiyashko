@@ -5,6 +5,7 @@
 #include "common.h"
 
 #include "main_shader.frag.inc"
+#include "face_color.frag.inc"
 
 layout(binding = 1) uniform sampler2D shadowMapMoments;
 
@@ -28,10 +29,7 @@ void main()
     shadow = posLightSpaceNDC.z < mean + 0.0015f ? 1.0f : disp / (disp + diff*diff);
   }
 
-  const vec4 dark_violet = vec4(0.59f, 0.0f, 0.82f, 1.0f);
-  const vec4 chartreuse  = vec4(0.5f, 1.0f, 0.0f, 1.0f);
-
-  vec4 lightColor1 = mix(dark_violet, chartreuse, abs(sin(Params.time)));
+  vec4 lightColor1 = vec4(0.5f, 0.5f, 0.5f, 1.f);
   vec4 lightColor2 = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
   vec3 lightDir   = normalize(Params.lightPos - pos);
@@ -39,5 +37,5 @@ void main()
   vec4 lightColor  = max(dot(norm, lightDir), 0.0f) * lightColor1 * Params.lightSourcesIntensityCoeff;
   vec4 ambientColor = ambient * Params.ambientIntensityCoeff;
 
-  out_fragColor = (lightColor*shadow + ambientColor + indirectLightCol) * vec4(Params.baseColor, 1.0f);
+  out_fragColor = (lightColor*shadow + ambientColor) * vec4(Params.baseColor, 1.0f) * color_from_normal(norm) + indirectLightCol;
 }

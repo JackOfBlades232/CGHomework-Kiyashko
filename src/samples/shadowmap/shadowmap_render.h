@@ -5,6 +5,7 @@
 #include "../../render/render_common.h"
 #include "../../render/quad_renderer.h"
 #include "../../../resources/shaders/common.h"
+#include "etna/ComputePipeline.hpp"
 #include "etna/GraphicsPipeline.hpp"
 #include <geom/vk_mesh.h>
 #include <vk_descriptor_sets.h>
@@ -45,6 +46,7 @@ public:
 
 private:
   etna::GlobalContext* m_context;
+  etna::Image mainViewColor;
   etna::Image mainViewDepth;
   etna::Image shadowMap;
   etna::Sampler defaultSampler;
@@ -75,8 +77,19 @@ private:
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
 
+  bool useSSS = true;
+  SSSParams sssParams {
+    .blurScale = 2.5f,
+    .depthAwareCorrection = 3.f,
+    .cameraFov = 45.f,
+    .zNear = 0.1f,
+    .zFar = 1000.f,
+    .isHorizontal = true
+  };
+
   etna::GraphicsPipeline m_basicForwardPipeline {};
   etna::GraphicsPipeline m_shadowPipeline {};
+  etna::ComputePipeline m_sssPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -129,6 +142,9 @@ private:
   void BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, VkImage a_targetImage, VkImageView a_targetImageView);
 
   void DrawSceneCmd(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp, VkPipelineLayout a_pipelineLayout = VK_NULL_HANDLE);
+
+  void RecordSSSCommands(VkCommandBuffer a_cmdBuff);
+  void RecordBlitMainColorToRTCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage);
 
   void loadShaders();
 

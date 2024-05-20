@@ -1,0 +1,68 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(push_constant) uniform params_t
+{
+  SSS_PARAMS_FIELDS
+} params;
+
+// @NOTE: this should have an indicator use/don't use SSS in alpha channel,
+//        but in this here HW we use it for all objects => we do not do this
+//        This also does not use specular component, which would have to be
+//        rendered separately
+layout(binding = 0, rgba8) uniform image2D colorMap;
+layout(binding = 1) uniform sampler2D depthMap;
+
+const vec4 kernel[] = 
+{
+  vec4(0.560479,   0.669086,    0.784728,      0   ),
+  vec4(0.00471691, 0.000184771, 5.07566e-005, -2   ),
+  vec4(0.0192831,  0.00282018,  0.00084214,   -1.28),
+  vec4(0.03639,    0.0130999,   0.00643685,   -0.72),
+  vec4(0.0821904,  0.0358608,   0.0209261,    -0.32),
+  vec4(0.0771802,  0.113491,    0.0793803,    -0.08),
+  vec4(0.0771802,  0.113491,    0.0793803,     0.08),
+  vec4(0.0821904,  0.0358608,   0.0209261,     0.32),
+  vec4(0.03639,    0.0130999,   0.00643685,    0.72),
+  vec4(0.0192831,  0.00282018,  0.00084214,    1.28),
+  vec4(0.00471691, 0.000184771, 5.07565e-005,  2   )
+};
+
+float linearizeDepth(float depth)
+{
+  return params.zNear * params.zFar / (depth * (params.zNear - params.zFar) + params.zNear);
+}
+
+void main()
+{
+  ivec2 texSize = imageSize(colorMap);
+  if (gl_GlobalInvocationID.x >= texSize.x || gl_GlobalInvocationID.y >= texSize.y)
+    return;
+
+  vec2 texCoord = gl_GlobalInvocationID.xy / vec2(texSize);
+
+  vec4 color = imageLoad(colorMap, ivec2(gl_GlobalInvocationID.xy));
+  float depth = linearizeDepth(texture(depthMap, texCoord).x);
+
+  vec2 stepDir = params.isHorizontal ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  float distanceToScreen = 1.0 / tan(0.5 * radians(params.cameraFov));
+  vec2 blurStep = (0.5 * stepDir * params.blurScale * distanceToScreen) / (depth * texSize);
+
+  vec3 blurredRgb = vec3(0.0);
+  for (int i = 0; i < kernel.length(); ++i)
+  {
+    vec2 sampleTexCoord = texCoord + blurStep * kernel[i].a;
+    ivec2 sampleCoord = ivec2(sampleTexCoord * texSize);
+    vec4 sampleColor = imageLoad(colorMap, sampleCoord);
+    float sampleDepth = linearizeDepth(texture(depthMap, sampleTexCoord).x);
+
+    float coeff = min(abs(sampleDepth - depth) * params.blurScale / params.depthAwareCorrection, 1.0);
+    blurredRgb += mix(sampleColor, color, coeff).xyz * kernel[i].xyz;
+  }
+  
+  imageStore(colorMap, ivec2(gl_GlobalInvocationID.xy), vec4(blurredRgb, 1.0));
+}

@@ -51,4 +51,16 @@ struct UniformParams
   shader_bool  animateLightColor;
 };
 
+#define SSS_PARAMS_FIELDS     \
+  float blurScale;            \
+  float depthAwareCorrection; \
+  float cameraFov;            \
+  float zNear, zFar;          \
+  bool isHorizontal;
+
+struct SSSParams
+{
+  SSS_PARAMS_FIELDS
+};
+
 #endif // VK_GRAPHICS_BASIC_COMMON_H

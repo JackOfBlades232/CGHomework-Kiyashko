@@ -79,8 +79,8 @@ private:
 
   bool useSSS = true;
   SSSParams sssParams {
-    .blurScale = 0.02f,
-    .depthAwareCorrection = 300.f,
+    .blurScale = 0.06f,
+    .depthAwareCorrection = 3.f,
     .cameraFov = 45.f,
     .zNear = 0.1f,
     .zFar = 1000.f,

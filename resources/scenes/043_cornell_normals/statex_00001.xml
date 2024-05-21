@@ -190,14 +190,6 @@
   </material>
 </materials_lib>
 <geometry_lib total_chunks="8">
-  <mesh id="0" name="Box01" type="vsgf" bytesize="1752" loc="data/chunk_00001.vsgf" offset="0" vertNum="28" triNum="10" dl="0" path="" bbox=" -1.27 1.27 -0.19559 2.01057 -1.27 1.27">
-    <positions type="array4f" bytesize="448" offset="24" apply="vertex" />
-    <normals type="array4f" bytesize="448" offset="472" apply="vertex" />
-    <tangents type="array4f" bytesize="448" offset="920" apply="vertex" />
-    <texcoords type="array2f" bytesize="224" offset="1368" apply="vertex" />
-    <indices type="array1i" bytesize="120" offset="1592" apply="tlist" />
-    <matindices type="array1i" bytesize="40" offset="1712" apply="primitive" />
-  </mesh>
   <mesh id="1" name="Teapot01" type="vsgf" bytesize="3379192" loc="data/chunk_00002.vsgf" offset="0" vertNum="53028" triNum="25600" dl="0" path="" bbox="-0.9525 1.0903 0 1.00013 -0.635 0.635">
     <positions type="array4f" bytesize="848448" offset="24" apply="vertex" />
     <normals type="array4f" bytesize="848448" offset="848472" apply="vertex" />

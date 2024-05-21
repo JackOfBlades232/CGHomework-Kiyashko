@@ -1,13 +1,23 @@
 #include "../../utils/input_definitions.h"
 
+#include "LiteMath.h"
 #include "etna/Etna.hpp"
 #include "shadowmap_render.h"
 
 void SimpleShadowmapRender::UpdateCamera(const Camera* cams, uint32_t a_camsNumber)
 {
   m_cam = cams[0];
-  if(a_camsNumber >= 2)
-    m_light.cam = cams[1];
+
+  static bool lightInited = false;
+  if (!lightInited)
+  {
+    if(a_camsNumber >= 2)
+      m_light.cam = cams[1];
+    m_light.cam.pos = LiteMath::float3{4.f, 4.f, 4.f};
+
+    lightInited = true;
+  }
+
   UpdateView(); 
 }
 

@@ -13,12 +13,12 @@ void SimpleShadowmapRender::SetupGUIElements()
     ImGui::Begin("Simple render settings");
 
     ImGui::ColorEdit3("Meshes base color", m_uniforms.baseColor.M, ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs);
-    ImGui::SliderFloat3("Light source position", m_uniforms.lightPos.M, -10.f, 10.f);
+    ImGui::SliderFloat3("Light source position", m_light.cam.pos.M, -10.f, 10.f);
 
     ImGui::Checkbox("Use SSS", &useSSS);
     if (useSSS)
     {
-      ImGui::SliderFloat("Blur scale", &sssParams.blurScale, 0.00001f, 0.1f);
+      ImGui::SliderFloat("Blur scale", &sssParams.blurScale, 0.00001f, 0.3f);
       ImGui::SliderFloat("Depth aware correction", &sssParams.depthAwareCorrection, 0.f, 1000.f);
     }
 

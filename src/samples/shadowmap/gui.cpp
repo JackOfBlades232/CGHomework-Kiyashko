@@ -18,8 +18,8 @@ void SimpleShadowmapRender::SetupGUIElements()
     ImGui::Checkbox("Use SSS", &useSSS);
     if (useSSS)
     {
-      ImGui::SliderFloat("Blur scale", &sssParams.blurScale, 0.00001f, 5.f);
-      ImGui::SliderFloat("Depth aware correction", &sssParams.depthAwareCorrection, 1.f, 20.f);
+      ImGui::SliderFloat("Blur scale", &sssParams.blurScale, 0.00001f, 0.1f);
+      ImGui::SliderFloat("Depth aware correction", &sssParams.depthAwareCorrection, 0.f, 1000.f);
     }
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);

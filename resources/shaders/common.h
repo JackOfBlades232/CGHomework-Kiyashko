@@ -56,7 +56,7 @@ struct UniformParams
   float depthAwareCorrection; \
   float cameraFov;            \
   float zNear, zFar;          \
-  bool isHorizontal;
+  float isHorizontal; // @TEST
 
 struct SSSParams
 {

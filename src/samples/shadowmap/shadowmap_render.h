@@ -79,12 +79,12 @@ private:
 
   bool useSSS = true;
   SSSParams sssParams {
-    .blurScale = 2.5f,
-    .depthAwareCorrection = 3.f,
+    .blurScale = 0.02f,
+    .depthAwareCorrection = 300.f,
     .cameraFov = 45.f,
     .zNear = 0.1f,
     .zFar = 1000.f,
-    .isHorizontal = true
+    .isHorizontal = 1.f//true
   };
 
   etna::GraphicsPipeline m_basicForwardPipeline {};

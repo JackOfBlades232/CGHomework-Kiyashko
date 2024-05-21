@@ -1,11 +1,11 @@
 #include "shadowmap_render.h"
 #include "vulkan/vulkan_enums.hpp"
+#include "vulkan/vulkan_structs.hpp"
 
 #include <cstdint>
 #include <geom/vk_mesh.h>
 #include <vk_pipeline.h>
 #include <vk_buffers.h>
-#include <iostream>
 
 #include <etna/GlobalContext.hpp>
 #include <etna/Etna.hpp>
@@ -209,7 +209,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   RecordBlitMainColorToRTCommands(a_cmdBuff, a_targetImage);
 
   if(m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, shadowMap, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, mainViewDepth, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,
@@ -227,13 +227,18 @@ void SimpleShadowmapRender::RecordSSSCommands(VkCommandBuffer a_cmdBuff)
     vk::AccessFlags2(vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite),
     vk::ImageLayout::eGeneral,
     vk::ImageAspectFlagBits::eColor);
+  etna::set_state(a_cmdBuff, mainViewDepth.get(), 
+    vk::PipelineStageFlagBits2::eComputeShader,
+    vk::AccessFlags2(vk::AccessFlagBits2::eShaderSampledRead),
+    vk::ImageLayout::eShaderReadOnlyOptimal,
+    vk::ImageAspectFlagBits::eDepth);
   etna::flush_barriers(a_cmdBuff);
 
   auto sssInfo = etna::get_shader_program("sss_blur");
   auto set = etna::create_descriptor_set(sssInfo.getDescriptorLayoutId(0), a_cmdBuff,
   {
     etna::Binding {0, mainViewColor.genBinding(defaultSampler.get(), vk::ImageLayout::eGeneral)},
-    etna::Binding {1, shadowMap.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
+    etna::Binding {1, mainViewDepth.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)}
   });
   VkDescriptorSet vkSet = set.getVkSet();
 
@@ -244,21 +249,34 @@ void SimpleShadowmapRender::RecordSSSCommands(VkCommandBuffer a_cmdBuff)
   uint32_t wgDimX = (m_width-1)/16 + 1;
   uint32_t wgDimY = (m_height-1)/16 + 1;
 
-  sssParams.isHorizontal = true;
+  sssParams.isHorizontal = 1.f;//true;
   vkCmdPushConstants(a_cmdBuff, m_sssPipeline.getVkPipelineLayout(),
     VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SSSParams), &sssParams);
   vkCmdDispatch(a_cmdBuff, wgDimX, wgDimY, 1);
 
-  /*
-  etna::set_state(a_cmdBuff, mainViewColor.get(), 
-    vk::PipelineStageFlagBits2::eComputeShader,
-    vk::AccessFlags2(vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite),
-    vk::ImageLayout::eGeneral,
-    vk::ImageAspectFlagBits::eColor);
-  etna::flush_barriers(a_cmdBuff);
-    */
+  vk::ImageMemoryBarrier2 barrier{
+    .srcStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
+    .srcAccessMask       = vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite,
+    .dstStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
+    .dstAccessMask       = vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite,
+    .oldLayout           = vk::ImageLayout::eGeneral,
+    .newLayout           = vk::ImageLayout::eGeneral,
+    .srcQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+    .dstQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+    .image               = mainViewColor.get(),
+    .subresourceRange    = {
+      .aspectMask = vk::ImageAspectFlagBits::eColor,
+      .levelCount = 1,
+      .layerCount = 1
+    },
+  };
+  vk::DependencyInfo depInfo{
+    .imageMemoryBarrierCount = 1,
+    .pImageMemoryBarriers = &barrier
+  };
+  vkCmdPipelineBarrier2(a_cmdBuff, (VkDependencyInfo *)&depInfo);
 
-  sssParams.isHorizontal = false;
+  sssParams.isHorizontal = 0.f;//false;
   vkCmdPushConstants(a_cmdBuff, m_sssPipeline.getVkPipelineLayout(),
     VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SSSParams), &sssParams);
   vkCmdDispatch(a_cmdBuff, wgDimX, wgDimY, 1);

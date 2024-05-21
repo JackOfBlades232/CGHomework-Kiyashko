@@ -19,22 +19,37 @@ layout(binding = 1) uniform sampler2D depthMap;
 
 const vec4 kernel[] = 
 {
-  vec4(0.560479,   0.669086,    0.784728,      0   ),
-  vec4(0.00471691, 0.000184771, 5.07566e-005, -2   ),
-  vec4(0.0192831,  0.00282018,  0.00084214,   -1.28),
-  vec4(0.03639,    0.0130999,   0.00643685,   -0.72),
-  vec4(0.0821904,  0.0358608,   0.0209261,    -0.32),
-  vec4(0.0771802,  0.113491,    0.0793803,    -0.08),
-  vec4(0.0771802,  0.113491,    0.0793803,     0.08),
-  vec4(0.0821904,  0.0358608,   0.0209261,     0.32),
-  vec4(0.03639,    0.0130999,   0.00643685,    0.72),
-  vec4(0.0192831,  0.00282018,  0.00084214,    1.28),
-  vec4(0.00471691, 0.000184771, 5.07565e-005,  2   )
+    vec4(0.530605, 0.613514, 0.739601, 0),
+    vec4(0.000973794, 1.11862e-005, 9.43437e-007, -3),
+    vec4(0.00333804, 7.85443e-005, 1.2945e-005, -2.52083),
+    vec4(0.00500364, 0.00020094, 5.28848e-005, -2.08333),
+    vec4(0.00700976, 0.00049366, 0.000151938, -1.6875),
+    vec4(0.0094389, 0.00139119, 0.000416598, -1.33333),
+    vec4(0.0128496, 0.00356329, 0.00132016, -1.02083),
+    vec4(0.017924, 0.00711691, 0.00347194, -0.75),
+    vec4(0.0263642, 0.0119715, 0.00684598, -0.520833),
+    vec4(0.0410172, 0.0199899, 0.0118481, -0.333333),
+    vec4(0.0493588, 0.0367726, 0.0219485, -0.1875),
+    vec4(0.0402784, 0.0657244, 0.04631, -0.0833333),
+    vec4(0.0211412, 0.0459286, 0.0378196, -0.0208333),
+    vec4(0.0211412, 0.0459286, 0.0378196, 0.0208333),
+    vec4(0.0402784, 0.0657244, 0.04631, 0.0833333),
+    vec4(0.0493588, 0.0367726, 0.0219485, 0.1875),
+    vec4(0.0410172, 0.0199899, 0.0118481, 0.333333),
+    vec4(0.0263642, 0.0119715, 0.00684598, 0.520833),
+    vec4(0.017924, 0.00711691, 0.00347194, 0.75),
+    vec4(0.0128496, 0.00356329, 0.00132016, 1.02083),
+    vec4(0.0094389, 0.00139119, 0.000416598, 1.33333),
+    vec4(0.00700976, 0.00049366, 0.000151938, 1.6875),
+    vec4(0.00500364, 0.00020094, 5.28848e-005, 2.08333),
+    vec4(0.00333804, 7.85443e-005, 1.2945e-005, 2.52083),
+    vec4(0.000973794, 1.11862e-005, 9.43437e-007, 3),
 };
 
-float linearizeDepth(float depth)
+float sampleLinearDepth(vec2 tc)
 {
-  return params.zNear * params.zFar / (depth * (params.zNear - params.zFar) + params.zNear);
+  float depth = texture(depthMap, tc).x;
+  return params.zNear * params.zFar / (depth * (params.zFar - params.zNear) - params.zFar);
 }
 
 void main()
@@ -46,21 +61,31 @@ void main()
   vec2 texCoord = gl_GlobalInvocationID.xy / vec2(texSize);
 
   vec4 color = imageLoad(colorMap, ivec2(gl_GlobalInvocationID.xy));
-  float depth = linearizeDepth(texture(depthMap, texCoord).x);
+  float depth = sampleLinearDepth(texCoord);
 
-  vec2 stepDir = params.isHorizontal ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  //vec2 stepDir = params.isHorizontal ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec2 stepDir = params.isHorizontal > 0.5 ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   float distanceToScreen = 1.0 / tan(0.5 * radians(params.cameraFov));
-  vec2 blurStep = (0.5 * stepDir * params.blurScale * distanceToScreen) / (depth * texSize);
+  vec2 blurStep = (0.333 * stepDir * params.blurScale * distanceToScreen) / depth;
 
-  vec3 blurredRgb = vec3(0.0);
-  for (int i = 0; i < kernel.length(); ++i)
+  vec3 blurredRgb = color.xyz * kernel[0].xyz;
+  for (int i = 1; i < kernel.length(); ++i)
   {
     vec2 sampleTexCoord = texCoord + blurStep * kernel[i].a;
+    if (sampleTexCoord.x < 0.0 || sampleTexCoord.y < 0.0 ||
+        sampleTexCoord.x > 1.0 || sampleTexCoord.y > 1.0)
+    {
+      blurredRgb += color.xyz * kernel[i].xyz;
+      continue;
+    }
+
     ivec2 sampleCoord = ivec2(sampleTexCoord * texSize);
     vec4 sampleColor = imageLoad(colorMap, sampleCoord);
-    float sampleDepth = linearizeDepth(texture(depthMap, sampleTexCoord).x);
+    float sampleDepth = sampleLinearDepth(sampleTexCoord);
 
-    float coeff = min(abs(sampleDepth - depth) * params.blurScale / params.depthAwareCorrection, 1.0);
+    float coeff = clamp(
+        abs(sampleDepth - depth) * params.blurScale * distanceToScreen * params.depthAwareCorrection,
+        0.0, 1.0);
     blurredRgb += mix(sampleColor, color, coeff).xyz * kernel[i].xyz;
   }
   

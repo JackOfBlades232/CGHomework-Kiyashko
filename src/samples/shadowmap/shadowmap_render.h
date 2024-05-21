@@ -15,6 +15,7 @@
 
 #include <string>
 #include <iostream>
+#include <span>
 
 #include <etna/GlobalContext.hpp>
 #include <etna/Sampler.hpp>
@@ -52,6 +53,10 @@ private:
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
+  etna::Image particleAtlas;
+  etna::Buffer particles;
+  std::span<Particle> particlesMemView;
+
   VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
 
   struct
@@ -77,7 +82,7 @@ private:
   UniformParams m_uniforms {};
   void* m_uboMappedMem = nullptr;
 
-  bool useSSS = true;
+  bool useSSS = false;
   SSSParams sssParams {
     .blurScale = 0.06f,
     .depthAwareCorrection = 3.f,
@@ -87,9 +92,27 @@ private:
     .isHorizontal = 1.f//true
   };
 
+  bool drawParticles = true;
+  ParticlesEmmisionParams emissionParams{
+    .time        = 0.f,
+    .spawnChance = 0.001f,
+    .minX        = -10.f,
+    .maxX        = 10.f,
+    .minZ        = -3.f,
+    .maxZ        = 3.f,
+    .Y           = 2.5f,
+    .minVel      = 0.3f,
+    .maxVel      = 1.5f,
+    .minLifetime = 1.5f,
+    .maxLifetime = 5.f,
+  };
+
   etna::GraphicsPipeline m_basicForwardPipeline {};
   etna::GraphicsPipeline m_shadowPipeline {};
   etna::ComputePipeline m_sssPipeline {};
+
+  etna::ComputePipeline m_partEmitPipeline {};
+  etna::ComputePipeline m_partSimulatePipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -145,6 +168,8 @@ private:
 
   void RecordSSSCommands(VkCommandBuffer a_cmdBuff);
   void RecordBlitMainColorToRTCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage);
+
+  void RecordParticlesComputePass(VkCommandBuffer a_cmdBuff);
 
   void loadShaders();
 

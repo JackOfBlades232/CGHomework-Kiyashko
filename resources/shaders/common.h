@@ -51,16 +51,37 @@ struct UniformParams
   shader_bool  animateLightColor;
 };
 
-#define SSS_PARAMS_FIELDS     \
-  float blurScale;            \
-  float depthAwareCorrection; \
-  float cameraFov;            \
-  float zNear, zFar;          \
-  float isHorizontal; // @TEST
+#define SSS_PARAMS_FIELDS            \
+  shader_float blurScale;            \
+  shader_float depthAwareCorrection; \
+  shader_float cameraFov;            \
+  shader_float zNear, zFar;          \
+  shader_float isHorizontal; // @TEST
 
 struct SSSParams
 {
   SSS_PARAMS_FIELDS
+};
+
+struct Particle
+{
+  shader_vec3  pos;
+  shader_vec3  vel;
+  shader_float timePhase;
+  shader_float maxTime;
+  shader_bool  isAlive;
+};
+
+#define PARTICLES_PARAMS_FIELDS           \
+  shader_float time;                      \
+  shader_float spawnChance;               \
+  shader_float minX, maxX, minZ, maxZ, Y; \
+  shader_float minVel, maxVel;            \
+  shader_float minLifetime, maxLifetime;
+
+struct ParticlesEmmisionParams
+{
+  PARTICLES_PARAMS_FIELDS
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

@@ -1,0 +1,48 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+struct IndirectCmdData 
+{
+  uint indexCount;
+  uint instanceCount;
+  uint firstIndex;
+  int  vertexOffset;
+  uint firstInstance;
+};
+
+layout(push_constant) uniform params_t
+{
+  vec3 camPos;
+} params;
+
+layout(std430, binding = 0) readonly buffer Particles 
+{
+  Particles particles[];
+};
+
+layout(std430, binding = 1) buffer Indices
+{
+  uint sortedIndices[];
+};
+
+layout(std430, binding = 2) buffer IndirectCommand
+{
+  IndirectCmdData cmd;
+};
+
+void main()
+{
+  // @NOTE: here we could also do culling
+
+  uint idx = gl_GlobalInvocationID.x;
+  if (idx < particles.length() && particles[i].isAlive)
+  {
+    particles[idx].time += dt;
+    particles[idx].pos  += particles[idx].vel * dt;
+    if (particles[idx].time >= particles[idx].maxTime)
+      particles[idx].isAlive = false;
+  }
+}
+

@@ -22,6 +22,12 @@ void SimpleShadowmapRender::SetupGUIElements()
       ImGui::SliderFloat("Depth aware correction", &sssParams.depthAwareCorrection, 0.f, 1000.f);
     }
 
+    ImGui::Checkbox("Particles", &drawParticles);
+    if (drawParticles)
+    {
+      
+    }
+
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
     ImGui::NewLine();

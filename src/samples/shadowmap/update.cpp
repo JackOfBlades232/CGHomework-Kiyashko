@@ -58,6 +58,8 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
   m_uniforms.time        = a_time;
 
   memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
+
+  emissionParams.time = a_time;
 }
 
 void SimpleShadowmapRender::ProcessInput(const AppInput &input)

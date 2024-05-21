@@ -1,0 +1,43 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#include "common.h"
+
+layout(local_size_x = 16) in;
+
+float rand(vec2 co)
+{
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+layout(push_constant) uniform params_t
+{
+  PARTICLES_PARAMS_FIELDS
+} params;
+
+layout(std430, binding = 0) buffer Particles 
+{
+  Particle particles[];
+};
+
+void main()
+{
+  uint idx = gl_GlobalInvocationID.x;
+  if (idx < particles.length() && !particles[idx].isAlive)
+  {
+    float bet = rand(vec2(params.time, idx));
+    if (bet <= params.spawnChance)
+    {
+      particles[idx].isAlive   = true;
+      particles[idx].timePhase = 0.0;
+
+      particles[idx].pos = vec3(
+        rand(vec2(bet, params.time)) * (params.maxX - params.minX) + params.minX,
+        params.Y,
+        rand(vec2(params.time, bet)) * (params.maxZ - params.minZ) + params.minZ);
+
+      particles[idx].vel       = vec3(0.0, rand(vec2(particles[idx].pos.x, particles[idx].pos.y)) * (params.maxVel - params.minVel) + params.minVel, 0.0);
+      particles[idx].maxTime   = rand(vec2(particles[idx].vel.y, bet)) * (params.maxLifetime - params.minLifetime) + params.minLifetime;
+    }
+  }
+}

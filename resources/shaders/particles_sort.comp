@@ -3,28 +3,26 @@
 
 #include "common.h"
 
+// @HACK: this lets me just merge sort w/ one work group
+layout(local_size_x = 256) in;
+
 struct IndirectCmdData 
 {
-  uint indexCount;
+  uint vertexCount;
   uint instanceCount;
-  uint firstIndex;
-  int  vertexOffset;
+  uint firstVertex;
   uint firstInstance;
 };
 
-layout(push_constant) uniform params_t
-{
-  vec3 camPos;
-} params;
-
 layout(std430, binding = 0) readonly buffer Particles 
 {
-  Particles particles[];
+  Particle particles[];
 };
 
-layout(std430, binding = 1) buffer Indices
+layout(std430, binding = 1) buffer Indices 
 {
-  uint sortedIndices[];
+  uint liveParticles;
+  uint particleIndices[];
 };
 
 layout(std430, binding = 2) buffer IndirectCommand
@@ -34,15 +32,45 @@ layout(std430, binding = 2) buffer IndirectCommand
 
 void main()
 {
-  // @NOTE: here we could also do culling
-
   uint idx = gl_GlobalInvocationID.x;
-  if (idx < particles.length() && particles[i].isAlive)
+
+  uint base = idx - 1;
+  uint mergeLen = 1;
+  for (uint i = 0; i < 8; ++i)
   {
-    particles[idx].time += dt;
-    particles[idx].pos  += particles[idx].vel * dt;
-    if (particles[idx].time >= particles[idx].maxTime)
-      particles[idx].isAlive = false;
+    if (base % 2 == 0)
+    {
+      uint i = idx;
+      uint j = idx + mergeLen;
+      while (i < mergeLen && j < mergeLen)
+      {
+        if (!particles[particleIndices[j]].isAlive || 
+            particles[particleIndices[i]].distToCam <= particles[particleIndices[j]].distToCam)
+        {
+          ++i;
+        }
+        else
+        {
+          uint tmp = particleIndices[i];
+          particleIndices[i] = particleIndices[j];
+          particleIndices[j] = tmp;
+          
+          ++j;
+        }
+      }
+
+      base /= 2;
+    }
+
+    barrier();
+  }
+
+  if (idx == 0)
+  {
+    cmd.vertexCount   = 6;
+    cmd.instanceCount = liveParticles;
+    cmd.firstVertex   = 0;
+    cmd.firstInstance = 0;
   }
 }
 

@@ -7,12 +7,23 @@ layout(local_size_x = 16) in;
 
 layout(push_constant) uniform params_t
 {
-  float dt;
+  SIMULATION_PARAMS_FIELDS
 } params;
 
 layout(std430, binding = 0) buffer Particles 
 {
   Particle particles[];
+};
+
+layout(std430, binding = 1) writeonly buffer Matrices 
+{
+  mat4 particleMatrices[];
+};
+
+layout(std430, binding = 2) buffer Indices 
+{
+  uint liveParticles;
+  uint particleIndices[];
 };
 
 void main()
@@ -22,8 +33,21 @@ void main()
   {
     particles[idx].timePhase += params.dt;
     particles[idx].pos       += particles[idx].vel * params.dt;
+    particles[idx].distToCam = length(particles[idx].pos - params.camPos);
+
+    vec3 zIm = normalize(params.camPos - particles[idx].pos);
+    vec3 xIm = cross(vec3(0.0, 1.0, 0.0), zIm);
+    vec3 yIm = cross(zIm, xIm);
+
+    particleMatrices[idx][0] = vec4(xIm * params.partScale, 0.0);
+    particleMatrices[idx][1] = vec4(yIm * params.partScale, 0.0);
+    particleMatrices[idx][2] = vec4(zIm * params.partScale, 0.0);
+    particleMatrices[idx][3] = vec4(particles[idx].pos,     1.0);
+
 
     if (particles[idx].timePhase >= particles[idx].maxTime)
       particles[idx].isAlive = false;
+    else
+      particleIndices[atomicAdd(liveParticles, 1)] = idx;
   }
 }

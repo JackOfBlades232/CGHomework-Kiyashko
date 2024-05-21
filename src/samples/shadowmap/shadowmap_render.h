@@ -5,6 +5,7 @@
 #include "../../render/render_common.h"
 #include "../../render/quad_renderer.h"
 #include "../../../resources/shaders/common.h"
+#include "LiteMath.h"
 #include "etna/ComputePipeline.hpp"
 #include "etna/GraphicsPipeline.hpp"
 #include <geom/vk_mesh.h>
@@ -55,7 +56,9 @@ private:
 
   etna::Image particleAtlas;
   etna::Buffer particles;
-  std::span<Particle> particlesMemView;
+  etna::Buffer particleMatrices;
+  etna::Buffer particleIndices;
+  etna::Buffer particleDrawIndirectCmd;
 
   VkCommandPool    m_commandPool    = VK_NULL_HANDLE;
 
@@ -95,24 +98,31 @@ private:
   bool drawParticles = true;
   ParticlesEmmisionParams emissionParams{
     .time        = 0.f,
-    .spawnChance = 0.001f,
-    .minX        = -10.f,
-    .maxX        = 10.f,
-    .minZ        = -3.f,
-    .maxZ        = 3.f,
-    .Y           = 2.5f,
+    .spawnChance = 0.0001f,
+    .minX        = -1.5f,
+    .maxX        = 1.5f,
+    .minZ        = -1.5f,
+    .maxZ        = 1.5f,
+    .Y           = 0.5f,
     .minVel      = 0.3f,
     .maxVel      = 1.5f,
     .minLifetime = 1.5f,
     .maxLifetime = 5.f,
+  };
+  ParticlesSimulationParams simulationParams{
+    .camPos = LiteMath::float3(),
+    .dt = 0.f,
+    .partScale = 0.1
   };
 
   etna::GraphicsPipeline m_basicForwardPipeline {};
   etna::GraphicsPipeline m_shadowPipeline {};
   etna::ComputePipeline m_sssPipeline {};
 
-  etna::ComputePipeline m_partEmitPipeline {};
-  etna::ComputePipeline m_partSimulatePipeline {};
+  etna::ComputePipeline  m_partEmitPipeline {};
+  etna::ComputePipeline  m_partSimulatePipeline {};
+  etna::ComputePipeline  m_partSortPipeline {};
+  etna::GraphicsPipeline m_partForwardPipeline {};
   
   VkSurfaceKHR m_surface = VK_NULL_HANDLE;
   VulkanSwapChain m_swapchain;
@@ -170,6 +180,7 @@ private:
   void RecordBlitMainColorToRTCommands(VkCommandBuffer a_cmdBuff, VkImage a_targetImage);
 
   void RecordParticlesComputePass(VkCommandBuffer a_cmdBuff);
+  void RecordParticlesForwardPass(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp);
 
   void loadShaders();
 

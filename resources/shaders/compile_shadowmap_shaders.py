@@ -13,6 +13,9 @@ if __name__ == '__main__':
         "subsurface_scatter.comp",
         "particles_emit.comp",
         "particles_simulate.comp",
+        "particles_sort.comp",
+        "particles.vert",
+        "particles.frag",
     ]
 
     for shader in shader_list:

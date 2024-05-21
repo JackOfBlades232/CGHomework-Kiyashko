@@ -59,6 +59,9 @@ void SimpleShadowmapRender::UpdateUniformBuffer(float a_time)
 
   memcpy(m_uboMappedMem, &m_uniforms, sizeof(m_uniforms));
 
+  simulationParams.dt = a_time - emissionParams.time;
+  simulationParams.camPos = m_cam.pos;
+
   emissionParams.time = a_time;
 }
 

@@ -67,21 +67,32 @@ struct Particle
 {
   shader_vec3  pos;
   shader_vec3  vel;
+  shader_float distToCam;
   shader_float timePhase;
   shader_float maxTime;
   shader_bool  isAlive;
 };
 
-#define PARTICLES_PARAMS_FIELDS           \
+#define EMISSION_PARAMS_FIELDS            \
   shader_float time;                      \
   shader_float spawnChance;               \
   shader_float minX, maxX, minZ, maxZ, Y; \
   shader_float minVel, maxVel;            \
   shader_float minLifetime, maxLifetime;
 
+#define SIMULATION_PARAMS_FIELDS \
+  shader_vec3 camPos;            \
+  shader_float dt;               \
+  shader_float partScale;
+
 struct ParticlesEmmisionParams
 {
-  PARTICLES_PARAMS_FIELDS
+  EMISSION_PARAMS_FIELDS
+};
+
+struct ParticlesSimulationParams
+{
+  SIMULATION_PARAMS_FIELDS
 };
 
 #endif // VK_GRAPHICS_BASIC_COMMON_H

@@ -1,32 +1,22 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
-#extension GL_GOOGLE_include_directive : require
-
-#include "common.h"
 
 layout(location = 0) in VS_OUT
 {
   vec3 wPos;
   vec3 wNorm;
   vec2 wUV;
-  uint partId;
+  float ratio;
 } vOut;
 
 layout(location = 0) out vec4 out_fragColor;
-
-layout(std430, binding = 2) readonly buffer Particles 
-{
-  Particle particles[];
-};
 
 layout(binding = 0, set = 1) uniform sampler2D atlas;
 
 void main(void)
 {
-  Particle part = particles[vOut.partId];
-
   // @HACK this should not be hardcoded (atlas layout)
-  out_fragColor = vec4(1.0, 1.0, 1.0, 0.3);
+  out_fragColor = vec4(1.0, 1.0, 1.0, 1.0 - vOut.ratio);
 
   /*
   const uint atlas_w = 8;

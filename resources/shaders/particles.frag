@@ -11,34 +11,27 @@ layout(location = 0) in VS_OUT
 
 layout(location = 0) out vec4 out_fragColor;
 
-layout(binding = 0, set = 1) uniform sampler2D atlas;
+// https://www.shadertoy.com/view/3tSGDy
+float star( in vec2 p, in float r, in int n, in float m)
+{
+    // next 4 lines can be precomputed for a given shape
+    float an = 3.141593/float(n);
+    float en = 3.141593/m;  // m is between 2 and n
+    vec2  acs = vec2(cos(an),sin(an));
+    vec2  ecs = vec2(cos(en),sin(en)); // ecs=vec2(0,1) for regular polygon
+
+    float bn = mod(atan(p.x,p.y),2.0*an) - an;
+    p = length(p)*vec2(cos(bn),abs(sin(bn)));
+    p -= r*acs;
+    p += ecs*clamp( -dot(p,ecs), 0.0, r*acs.y/ecs.y);
+    return length(p)*sign(p.x);
+}
 
 void main(void)
 {
-  // @HACK this should not be hardcoded (atlas layout)
-  out_fragColor = vec4(1.0, 1.0, 1.0, 1.0 - vOut.ratio);
-
-  /*
-  const uint atlas_w = 8;
-  const uint atlas_h = 11;
-  const uint num_frames = atlas_w * atlas_h;
-
-  float ratio = clamp(part.timePhase / part.maxTime, 0.0, 1.0);
-  
-  uint lFrameId = min(uint(floor(ratio * float(num_frames))), num_frames - 1);
-  uint rFrameId = lFrameId == num_frames - 1 ? lFrameId : lFrameId+1;
-  float mixCoeff = fract(ratio * float(num_frames));
-
-  vec2 lFramePos = vec2(lFrameId % atlas_w, lFrameId / atlas_w);
-  vec2 rFramePos = vec2(rFrameId % atlas_w, rFrameId / atlas_w);
-
-  vec2 atlasSize = vec2(atlas_w, atlas_h);
-  vec2 lFrameCoord = (lFramePos + vOut.wUV) / atlasSize;
-  vec2 rFrameCoord = (rFramePos + vOut.wUV) / atlasSize;
-
-  out_fragColor = mix(
-    texture(atlas, lFrameCoord),
-    texture(atlas, rFrameCoord),
-    mixCoeff);
-    */
+  float d = star(vOut.wUV*2.0 - 1.0, 0.5, 8, 4.0);
+  if (d <= 0)
+    out_fragColor = vec4(mix(vec3(1.0), vec3(0.8, 0.0, 0.8), -d), 1.0 - vOut.ratio);
+  else
+    out_fragColor = vec4(0.0);
 }

@@ -54,7 +54,6 @@ private:
   etna::Sampler defaultSampler;
   etna::Buffer constants;
 
-  etna::Image particleAtlas;
   etna::Buffer particles;
   etna::Buffer particleMatrices;
   etna::Buffer particleIndices;
@@ -103,7 +102,7 @@ private:
     .maxX        = 1.5f,
     .minZ        = -1.5f,
     .maxZ        = 1.5f,
-    .Y           = 0.5f,
+    .Y           = -0.25f,
     .minVel      = 0.3f,
     .maxVel      = 1.5f,
     .minLifetime = 1.5f,

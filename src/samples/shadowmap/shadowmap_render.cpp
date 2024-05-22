@@ -1,6 +1,5 @@
 #include "shadowmap_render.h"
 #include "etna/Image.hpp"
-#include "util.h"
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_enums.hpp"
 #include "vulkan/vulkan_structs.hpp"
@@ -55,16 +54,6 @@ void SimpleShadowmapRender::AllocateResources()
   });
 
   m_uboMappedMem = constants.map();
-
-  unsigned w, h;
-  std::vector<unsigned> atlasData = load_bmp(VK_GRAPHICS_BASIC_ROOT"/resources/textures/smoke_glow.bmp", &w, &h);
-  particleAtlas = etna::create_image_from_bytes(etna::Image::CreateInfo
-  {
-    .extent     = vk::Extent3D{w, h, 1},
-    .name       = "smoke_atlas",
-    .format     = vk::Format::eR8G8B8A8Srgb,
-    .imageUsage = vk::ImageUsageFlagBits::eSampled
-  }, m_cmdBuffersDrawMain[0], atlasData.data());
 
   particles = m_context->createBuffer(etna::Buffer::CreateInfo
   {
@@ -122,7 +111,6 @@ void SimpleShadowmapRender::DeallocateResources()
   particleIndices.reset();
   particleMatrices.reset();
   particles.reset();
-  particleAtlas.reset();
   mainViewColor.reset();
   mainViewDepth.reset(); // TODO: Make an etna method to reset all the resources
   shadowMap.reset();
@@ -307,7 +295,7 @@ void SimpleShadowmapRender::BuildCommandBufferSimple(VkCommandBuffer a_cmdBuff, 
   RecordBlitMainColorToRTCommands(a_cmdBuff, a_targetImage);
 
   if(m_input.drawFSQuad)
-    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, particleAtlas, defaultSampler);
+    m_pQuad->RecordCommands(a_cmdBuff, a_targetImage, a_targetImageView, shadowMap, defaultSampler);
 
   etna::set_state(a_cmdBuff, a_targetImage, vk::PipelineStageFlagBits2::eBottomOfPipe,
     vk::AccessFlags2(), vk::ImageLayout::ePresentSrcKHR,
@@ -583,15 +571,13 @@ void SimpleShadowmapRender::RecordParticlesComputePass(VkCommandBuffer a_cmdBuff
 void SimpleShadowmapRender::RecordParticlesForwardPass(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
 {
   auto forawrdInfo = etna::get_shader_program("part_forward");
-  auto set0 = etna::create_descriptor_set(forawrdInfo.getDescriptorLayoutId(0), a_cmdBuff,
+  auto set = etna::create_descriptor_set(forawrdInfo.getDescriptorLayoutId(0), a_cmdBuff,
   {
     etna::Binding {0, particleMatrices.genBinding()},
     etna::Binding {1, particleIndices.genBinding()},
     etna::Binding {2, particles.genBinding()},
   });
-  auto set1 = etna::create_descriptor_set(forawrdInfo.getDescriptorLayoutId(1), a_cmdBuff,
-    { etna::Binding {0, particleAtlas.genBinding(defaultSampler.get(), vk::ImageLayout::eShaderReadOnlyOptimal)} });
-  std::vector<VkDescriptorSet> vkSets = {set0.getVkSet(), set1.getVkSet()};
+  VkDescriptorSet vkSet = set.getVkSet();
 
   etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, m_width, m_height},
       {{.image = mainViewColor.get(), .view = mainViewColor.getView({}), .loadOp = vk::AttachmentLoadOp::eLoad}},
@@ -599,7 +585,7 @@ void SimpleShadowmapRender::RecordParticlesForwardPass(VkCommandBuffer a_cmdBuff
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_partForwardPipeline.getVkPipeline());
   vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    m_partForwardPipeline.getVkPipelineLayout(), 0, vkSets.size(), vkSets.data(), 0, VK_NULL_HANDLE);
+    m_partForwardPipeline.getVkPipelineLayout(), 0, 1, &vkSet, 0, VK_NULL_HANDLE);
 
   vkCmdPushConstants(a_cmdBuff, m_partForwardPipeline.getVkPipelineLayout(),
     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float4x4), &a_wvp);

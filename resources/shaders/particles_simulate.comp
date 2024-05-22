@@ -33,7 +33,11 @@ void main()
   {
     particles[idx].timePhase += params.dt;
     particles[idx].pos       += particles[idx].vel * params.dt;
-    particles[idx].vel       -= vec3(0.0, 9.81 * params.dt * 0.005, 0.0);
+
+    vec2 toMid = vec2(0.0) - particles[idx].pos.xz;
+    vec3 forceVec = normalize(vec3(toMid.x, 0.0, toMid.y));
+    particles[idx].vel += forceVec * 0.03 + vec3(0.0, -9.81 * params.dt * 0.01, 0.0);
+
     particles[idx].distToCam = length(particles[idx].pos - params.camPos);
 
     vec3 zIm = normalize(params.camPos - particles[idx].pos);

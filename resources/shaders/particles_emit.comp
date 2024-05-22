@@ -43,7 +43,7 @@ void main()
         params.Y,
         rand(vec2(params.time, bet)) * (params.maxZ - params.minZ) + params.minZ);
 
-      particles[idx].vel       = vec3(0.0, rand(vec2(particles[idx].pos.x, particles[idx].pos.y)) * (params.maxVel - params.minVel) + params.minVel, 0.0);
+      particles[idx].vel       = vec3(0.0, rand(vec2(particles[idx].pos.x, particles[idx].pos.z)) * (params.maxVel - params.minVel) + params.minVel, 0.0);
       particles[idx].maxTime   = rand(vec2(particles[idx].vel.y, bet)) * (params.maxLifetime - params.minLifetime) + params.minLifetime;
     }
   }

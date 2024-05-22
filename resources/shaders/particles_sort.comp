@@ -4,7 +4,7 @@
 #include "common.h"
 
 // @HACK: this lets me just merge sort w/ one work group
-layout(local_size_x = 256) in;
+layout(local_size_x = 128) in;
 
 struct IndirectCmdData 
 {
@@ -25,45 +25,96 @@ layout(std430, binding = 1) buffer Indices
   uint particleIndices[];
 };
 
-layout(std430, binding = 2) buffer IndirectCommand
+layout(std430, binding = 2) writeonly buffer IndirectCommand
 {
   IndirectCmdData cmd;
 };
 
+shared Particle locParticles[256];
+shared uint locIndices[256];
+
+bool less(uint i, uint j)
+{
+  return (locParticles[locIndices[i]].isAlive && !locParticles[locIndices[j]].isAlive) ||
+         locParticles[locIndices[i]].distToCam < locParticles[locIndices[j]].distToCam;
+}
+
+void swap(uint i, uint j)
+{
+  uint tmp = locIndices[i];
+  locIndices[i] = locIndices[j];
+  locIndices[j] = tmp;
+}
+
+void cas(uint i, uint j)
+{
+  if (less(j, i)) swap(i, j);
+}
+
+/*
+void flip(uint i, uint scale)
+{
+    uint  q       = ((2 * i) / scale) * scale;
+    uint  t2      = i % (scale / 2);
+    uvec2 indices = q + uvec2(t2, scale - t2 - 1);
+
+    cas(min(indices.x, indices.y), max(indices.x, indices.y));
+}
+
+void disperse(uint i, uint scale)
+{
+    uint  q       = ((2 * i) / scale) * scale;
+    uint  t2      = i % (scale / 2);
+    uvec2 indices = q + uvec2(t2, t2 + (scale / 2));
+
+    cas(min(indices.x, indices.y), max(indices.x, indices.y));
+}
+*/
+
 void main()
 {
-  uint idx = gl_GlobalInvocationID.x;
+  uint idx  = gl_GlobalInvocationID.x;
+  uint idx1 = 2*idx;
+  uint idx2 = idx1+1;
+  locParticles[idx1] = particles[idx1];
+  locParticles[idx2] = particles[idx2];
+  locIndices[idx1]   = particleIndices[idx1];
+  locIndices[idx2]   = particleIndices[idx2];
 
-  uint base = idx - 1;
-  uint mergeLen = 1;
-  for (uint i = 0; i < 8; ++i)
+  /*
+  for (uint flipScale = 2; flipScale <= 256; flipScale *= 2)
   {
-    if (base % 2 == 0)
-    {
-      uint i = idx;
-      uint j = idx + mergeLen;
-      while (i < mergeLen && j < mergeLen)
-      {
-        if (!particles[particleIndices[j]].isAlive || 
-            particles[particleIndices[i]].distToCam <= particles[particleIndices[j]].distToCam)
-        {
-          ++i;
-        }
-        else
-        {
-          uint tmp = particleIndices[i];
-          particleIndices[i] = particleIndices[j];
-          particleIndices[j] = tmp;
-          
-          ++j;
-        }
-      }
-
-      base /= 2;
-    }
-
     barrier();
+    flip(idx, flipScale);
+
+    for (uint disperseScale = flipScale/2; disperseScale > 1; disperseScale /= 2)
+    {
+      barrier();
+      disperse(idx, disperseScale);
+    }
   }
+  */
+  if (idx == 0)
+  {
+    // @TODO: fix bitonic sort
+    for (int i = 1; i < 256; i++)
+    {
+      uint key = locIndices[i];
+      int j = i - 1;
+
+      while (j >= 0 && less(i, j))
+      {
+        locIndices[j + 1] = locIndices[j];
+        j = j - 1;
+      }
+      locIndices[j + 1] = key;
+    }
+  }
+
+  barrier();
+
+  particleIndices[idx1] = locIndices[idx1];
+  particleIndices[idx2] = locIndices[idx2];
 
   if (idx == 0)
   {

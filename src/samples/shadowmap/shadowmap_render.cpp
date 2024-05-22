@@ -213,8 +213,14 @@ void SimpleShadowmapRender::SetupSimplePipeline()
         },
         .logicOpEnable = false
       },
+      .depthConfig = {
+        .depthTestEnable  = true,
+        .depthWriteEnable = false,
+        .depthCompareOp   = vk::CompareOp::eLess
+      },
       .fragmentShaderOutput = {
-        .colorAttachmentFormats = { static_cast<vk::Format>(m_swapchain.GetFormat()) }
+        .colorAttachmentFormats = { static_cast<vk::Format>(m_swapchain.GetFormat()) },
+        .depthAttachmentFormat  = vk::Format::eD32Sfloat
       },
     });
 }
@@ -457,7 +463,7 @@ void SimpleShadowmapRender::RecordParticlesComputePass(VkCommandBuffer a_cmdBuff
     };
     vk::DependencyInfo depInfo{
       .bufferMemoryBarrierCount = 2,
-        .pBufferMemoryBarriers    = barriers
+      .pBufferMemoryBarriers    = barriers
     };
     vkCmdPipelineBarrier2(a_cmdBuff, (VkDependencyInfo *)&depInfo);
   }
@@ -486,13 +492,24 @@ void SimpleShadowmapRender::RecordParticlesComputePass(VkCommandBuffer a_cmdBuff
       {
         .srcStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
         .srcAccessMask       = vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite,
-        .dstStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
+        .dstStageMask        = vk::PipelineStageFlagBits2::eComputeShader | vk::PipelineStageFlagBits2::eFragmentShader,
         .dstAccessMask       = vk::AccessFlagBits2::eShaderStorageRead,
         .srcQueueFamilyIndex = m_context->getQueueFamilyIdx(),
         .dstQueueFamilyIndex = m_context->getQueueFamilyIdx(),
         .buffer              = particles.get(),
         .offset              = 0,
         .size                = 256 * sizeof(Particle)
+      },
+      {
+        .srcStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
+        .srcAccessMask       = vk::AccessFlagBits2::eShaderStorageWrite,
+        .dstStageMask        = vk::PipelineStageFlagBits2::eVertexShader,
+        .dstAccessMask       = vk::AccessFlagBits2::eShaderStorageRead,
+        .srcQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+        .dstQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+        .buffer              = particleMatrices.get(),
+        .offset              = 0,
+        .size                = 256 * sizeof(float4x4)
       },
       {
         .srcStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
@@ -508,7 +525,7 @@ void SimpleShadowmapRender::RecordParticlesComputePass(VkCommandBuffer a_cmdBuff
     };
     vk::DependencyInfo depInfo{
       .bufferMemoryBarrierCount = 2,
-        .pBufferMemoryBarriers    = barriers
+      .pBufferMemoryBarriers    = barriers
     };
     vkCmdPipelineBarrier2(a_cmdBuff, (VkDependencyInfo *)&depInfo);
   }
@@ -529,6 +546,38 @@ void SimpleShadowmapRender::RecordParticlesComputePass(VkCommandBuffer a_cmdBuff
 
     vkCmdDispatch(a_cmdBuff, 1, 1, 1);
   }
+
+  {
+    vk::BufferMemoryBarrier2 barriers[] = {
+      {
+        .srcStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
+        .srcAccessMask       = vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite,
+        .dstStageMask        = vk::PipelineStageFlagBits2::eVertexShader,
+        .dstAccessMask       = vk::AccessFlagBits2::eShaderStorageRead,
+        .srcQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+        .dstQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+        .buffer              = particleIndices.get(),
+        .offset              = 0,
+        .size                = (256 + 1) * sizeof(uint32_t)
+      },
+      {
+        .srcStageMask        = vk::PipelineStageFlagBits2::eComputeShader,
+        .srcAccessMask       = vk::AccessFlagBits2::eShaderStorageWrite,
+        .dstStageMask        = vk::PipelineStageFlagBits2::eDrawIndirect,
+        .dstAccessMask       = vk::AccessFlagBits2::eIndirectCommandRead,
+        .srcQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+        .dstQueueFamilyIndex = m_context->getQueueFamilyIdx(),
+        .buffer              = particleDrawIndirectCmd.get(),
+        .offset              = 0,
+        .size                = 4 * sizeof(uint32_t)
+      },
+    };
+    vk::DependencyInfo depInfo{
+      .bufferMemoryBarrierCount = 2,
+      .pBufferMemoryBarriers    = barriers
+    };
+    vkCmdPipelineBarrier2(a_cmdBuff, (VkDependencyInfo *)&depInfo);
+  }
 }
 
 void SimpleShadowmapRender::RecordParticlesForwardPass(VkCommandBuffer a_cmdBuff, const float4x4& a_wvp)
@@ -545,7 +594,8 @@ void SimpleShadowmapRender::RecordParticlesForwardPass(VkCommandBuffer a_cmdBuff
   std::vector<VkDescriptorSet> vkSets = {set0.getVkSet(), set1.getVkSet()};
 
   etna::RenderTargetState renderTargets(a_cmdBuff, {0, 0, m_width, m_height},
-      {{.image = mainViewColor.get(), .view = mainViewColor.getView({}), .loadOp = vk::AttachmentLoadOp::eLoad}}, {});
+      {{.image = mainViewColor.get(), .view = mainViewColor.getView({}), .loadOp = vk::AttachmentLoadOp::eLoad}},
+      {.image = mainViewDepth.get(), .view = mainViewDepth.getView({})});
 
   vkCmdBindPipeline(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, m_partForwardPipeline.getVkPipeline());
   vkCmdBindDescriptorSets(a_cmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS,

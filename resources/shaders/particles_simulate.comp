@@ -33,6 +33,7 @@ void main()
   {
     particles[idx].timePhase += params.dt;
     particles[idx].pos       += particles[idx].vel * params.dt;
+    particles[idx].vel       -= vec3(0.0, 9.81 * params.dt * 0.005, 0.0);
     particles[idx].distToCam = length(particles[idx].pos - params.camPos);
 
     vec3 zIm = normalize(params.camPos - particles[idx].pos);

@@ -14,7 +14,7 @@ layout(location = 0) in VS_OUT
 
 layout(location = 0) out vec4 out_fragColor;
 
-layout(std430, binding = 2) buffer Particles 
+layout(std430, binding = 2) readonly buffer Particles 
 {
   Particle particles[];
 };
@@ -26,6 +26,9 @@ void main(void)
   Particle part = particles[vOut.partId];
 
   // @HACK this should not be hardcoded (atlas layout)
+  out_fragColor = vec4(1.0, 1.0, 1.0, 0.3);
+
+  /*
   const uint atlas_w = 8;
   const uint atlas_h = 11;
   const uint num_frames = atlas_w * atlas_h;
@@ -47,4 +50,5 @@ void main(void)
     texture(atlas, lFrameCoord),
     texture(atlas, rFrameCoord),
     mixCoeff);
+    */
 }
